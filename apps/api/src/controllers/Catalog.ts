@@ -14,7 +14,7 @@ import {CatchAsync} from '../utils/asyncHandler.js';
 @Controller('catalog')
 export class Catalog {
   /**
-   * GET /catalog/products?search=&limit=&cursor=
+   * GET /catalog/products?search=&parentId=&limit=&cursor=
    * Cursor-paginated list, ordered by name. `search` matches name (contains), id or SKU.
    */
   @Get('products')
@@ -22,8 +22,8 @@ export class Catalog {
   @CatchAsync
   public async list(req: Request, res: Response, _next: NextFunction) {
     const auth = res.locals.auth;
-    const {limit, cursor, search} = CatalogSchemas.list.parse(req.query);
-    const result = await CatalogService.list(auth.projectId!, limit, cursor, search || undefined);
+    const {limit, cursor, search, parentId} = CatalogSchemas.list.parse(req.query);
+    const result = await CatalogService.list(auth.projectId!, limit, cursor, search || undefined, parentId);
     return res.status(200).json(result);
   }
 

@@ -227,19 +227,23 @@ export class CatalogService {
     return snapshot.forLocale(options.locale);
   }
 
-  public static async list(projectId: string, limit: number, cursor?: string, search?: string) {
-    const where: Prisma.ProductWhereInput = {projectId};
+  public static async list(projectId: string, limit: number, cursor?: string, search?: string, parentId?: string) {
+    const where: Prisma.ProductWhereInput = parentId ? {projectId, parentId} : {projectId};
     if (search) {
       where.OR = [{name: {contains: search, mode: 'insensitive'}}, {externalId: search}, {sku: search}];
     }
 
-    const products = await prisma.product.findMany({
-      where,
-      take: limit + 1,
-      skip: cursor ? 1 : 0,
-      cursor: cursor ? {id: cursor} : undefined,
-      orderBy: [{name: 'asc'}, {id: 'asc'}],
-    });
+    // The total is only computed for the first page; later pages reuse it.
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        take: limit + 1,
+        skip: cursor ? 1 : 0,
+        cursor: cursor ? {id: cursor} : undefined,
+        orderBy: [{name: 'asc'}, {id: 'asc'}],
+      }),
+      cursor ? Promise.resolve(undefined) : prisma.product.count({where}),
+    ]);
 
     const hasMore = products.length > limit;
     const results = hasMore ? products.slice(0, -1) : products;
@@ -248,6 +252,7 @@ export class CatalogService {
       products: results.map(product => this.toApiProduct(product)),
       cursor: hasMore ? results[results.length - 1]?.id : undefined,
       hasMore,
+      ...(total === undefined ? {} : {total}),
     };
   }
 

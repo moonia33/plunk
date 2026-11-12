@@ -100,14 +100,28 @@ describe('CatalogService', () => {
       const first = await CatalogService.list(projectId, 2);
       expect(first.products.map(p => p.id)).toEqual(['p0', 'p1']);
       expect(first.hasMore).toBe(true);
+      expect(first.total).toBe(5);
       const second = await CatalogService.list(projectId, 2, first.cursor);
       expect(second.products.map(p => p.id)).toEqual(['p2', 'p3']);
+      expect(second.total).toBeUndefined();
 
       expect((await CatalogService.list(projectId, 20, undefined, 'masalas 3')).products.map(p => p.id)).toEqual([
         'p3',
       ]);
       expect((await CatalogService.list(projectId, 20, undefined, 'SKU-4')).products.map(p => p.id)).toEqual(['p4']);
       expect((await CatalogService.list(projectId, 20, undefined, 'p1')).products.map(p => p.id)).toEqual(['p1']);
+    });
+
+    it('lists the variants of a parent', async () => {
+      await CatalogService.upsert(projectId, [
+        product({id: '10', name: 'Ritė'}),
+        product({id: '10-1', parentId: '10', name: 'Ritė 2000'}),
+        product({id: '10-2', parentId: '10', name: 'Ritė 3000'}),
+        product({id: '11', name: 'Valas'}),
+      ]);
+      const variants = await CatalogService.list(projectId, 20, undefined, undefined, '10');
+      expect(variants.products.map(p => p.id)).toEqual(['10-1', '10-2']);
+      expect(variants.total).toBe(2);
     });
 
     it('deletes by ID', async () => {

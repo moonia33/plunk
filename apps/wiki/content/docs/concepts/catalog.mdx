@@ -77,6 +77,12 @@ Response: `{"updated": 1, "notFound": []}`. Supported fields: `price`, `salePric
 - `DELETE /catalog/products/:id`: delete one product.
 - `POST /catalog/products/delete` with `{"ids": ["1042", "1043"]}`: delete up to 1000 products.
 
+## Browsing the catalog
+
+The dashboard has a **Catalog** page (sidebar, or `G P`): products with image, ID, stock, price and last update, search by name, ID or SKU, and a product page with translations and variants. It is read-only; the shop stays the source of truth.
+
+`GET /catalog/products` also accepts `parentId=<id>` to list a product's variants, and returns `total` on the first page.
+
 ## Product blocks in the editor
 
 In the visual editor, the **Insert products** button (shopping bag) searches the catalog and inserts a grid of up to 6 products with 1–3 per row and a button label of your choice. The block is stored as the Liquid shown below, so it can be edited in HTML mode too. When a contact is selected for preview, the editor loads the referenced products for that contact's locale through `GET /catalog/render?ids=1042,1043&locale=lt`.
