@@ -848,6 +848,14 @@ export const CatalogSchemas = {
   delete: z.object({
     ids: z.array(catalogProductId).min(1).max(1000),
   }),
+  render: z.object({
+    ids: z
+      .string()
+      .max(4000)
+      .transform(value => value.split(',').map(id => id.trim()).filter(Boolean))
+      .pipe(z.array(z.string().max(191)).min(1).max(100)),
+    locale: catalogLocale.optional(),
+  }),
   list: z.object({
     limit: z.coerce.number().int().min(1).max(100).default(20),
     cursor: z.string().max(191).optional(),
