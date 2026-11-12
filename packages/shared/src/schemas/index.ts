@@ -762,3 +762,83 @@ export const MembershipSchemas = {
     role: z.enum(['ADMIN', 'MEMBER']),
   }),
 } as const;
+
+const catalogProductId = z
+  .union([z.string().trim().min(1).max(191), z.number().int().nonnegative()])
+  .transform(value => String(value));
+// Product links and images end up in href/src attributes of sent emails, so only
+// absolute http(s) URLs are accepted (no javascript:, data: and the like).
+const catalogUrl = z
+  .string()
+  .max(2048)
+  .url()
+  .refine(value => /^https?:\/\//i.test(value), 'Must be an http(s) URL');
+const catalogMoney = z.number().nonnegative().max(9_999_999_999);
+const catalogCurrency = z.string().regex(/^[A-Z]{3}$/, 'Use a 3-letter ISO 4217 code, e.g. EUR');
+const catalogLocale = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/, 'Use an ISO 639-1 code, e.g. lt or en-GB');
+
+const catalogTranslation = z.object({
+  name: z.string().min(1).max(500).optional(),
+  description: z.string().max(5000).optional(),
+  url: catalogUrl.optional(),
+  imageUrl: catalogUrl.optional(),
+  price: catalogMoney.optional(),
+  salePrice: catalogMoney.nullable().optional(),
+  currency: catalogCurrency.optional(),
+});
+
+const catalogProduct = z.object({
+  id: catalogProductId,
+  parentId: catalogProductId.nullish(),
+  sku: z.string().max(191).nullish(),
+  name: z.string().trim().min(1).max(500),
+  description: z.string().max(5000).nullish(),
+  url: catalogUrl.nullish(),
+  imageUrl: catalogUrl.nullish(),
+  images: z.array(catalogUrl).max(20).optional(),
+  price: catalogMoney.nullish(),
+  salePrice: catalogMoney.nullish(),
+  currency: catalogCurrency.nullish(),
+  available: z.boolean().default(true),
+  quantity: z.number().int().nullish(),
+  brand: z.string().max(191).nullish(),
+  categories: z.array(z.string().trim().min(1).max(191)).max(50).optional(),
+  translations: z
+    .record(catalogLocale, catalogTranslation)
+    .refine(value => Object.keys(value).length <= 20, 'At most 20 locales')
+    .optional(),
+  data: z
+    .record(jsonSchema)
+    .refine(value => JSON.stringify(value).length <= 16_384, 'data must be at most 16 KB as JSON')
+    .optional(),
+});
+
+export const CatalogSchemas = {
+  product: catalogProduct,
+  upsert: z.object({
+    products: z.array(catalogProduct).min(1).max(500),
+  }),
+  update: z.object({
+    products: z
+      .array(
+        z.object({
+          id: catalogProductId,
+          price: catalogMoney.nullable().optional(),
+          salePrice: catalogMoney.nullable().optional(),
+          currency: catalogCurrency.nullable().optional(),
+          available: z.boolean().optional(),
+          quantity: z.number().int().nullable().optional(),
+        }),
+      )
+      .min(1)
+      .max(1000),
+  }),
+  delete: z.object({
+    ids: z.array(catalogProductId).min(1).max(1000),
+  }),
+  list: z.object({
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    cursor: z.string().max(191).optional(),
+    search: z.string().trim().max(191).optional(),
+  }),
+} as const;

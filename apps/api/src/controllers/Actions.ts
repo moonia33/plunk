@@ -6,6 +6,7 @@ import {requirePublicKey, requireSecretKey} from '../middleware/auth.js';
 import {idempotency} from '../middleware/idempotency.js';
 import {sendRateLimit, trackRateLimit} from '../middleware/rateLimit.js';
 import {prisma} from '../database/prisma.js';
+import {CatalogService} from '../services/CatalogService.js';
 import {ContactService} from '../services/ContactService.js';
 import {DomainService} from '../services/DomainService.js';
 import {EmailService} from '../services/EmailService.js';
@@ -332,6 +333,10 @@ export class Actions {
         id: contact.id,
         email: contact.email,
         data: mergedData, // Also available as nested data for {{data.fieldName}} syntax
+        catalog: await CatalogService.forRender(auth.projectId, [emailSubject!, emailBody!], {
+          context: data,
+          locale: mergedData.locale,
+        }),
         unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
         subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
         manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,

@@ -30,6 +30,7 @@ import {Activity} from './controllers/Activity.js';
 import {Analytics} from './controllers/Analytics.js';
 import {Auth} from './controllers/Auth.js';
 import {Campaigns} from './controllers/Campaigns.js';
+import {Catalog} from './controllers/Catalog.js';
 import {Contacts} from './controllers/Contacts.js';
 import {Domains} from './controllers/Domains.js';
 import {Emails} from './controllers/Emails.js';
@@ -156,6 +157,7 @@ const server = new (class extends Server {
       new Analytics(),
       new Auth(),
       new Campaigns(),
+      new Catalog(),
       new Oauth(),
       new Users(),
       new Contacts(),
