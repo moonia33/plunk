@@ -12,6 +12,8 @@ import {LogicMention} from './LogicMention';
 import {subscribeSuggestionOpen} from './suggestionPopup';
 import {Toolbar} from './Toolbar';
 import {ResizableImage} from './ResizableImage';
+import {ProductBlock, referencedProductIds, type ProductBlockOptions} from './ProductBlock';
+import {ProductBlockDialog} from './ProductBlockDialog';
 import {HtmlEditor} from './HtmlEditor';
 import {useContactFields, useContacts, useSegmentContacts} from '../../lib/hooks/useContacts';
 import {useConfig} from '../../lib/hooks/useConfig';
@@ -67,6 +69,8 @@ export function EmailEditor({value, onChange, placeholder, subject, from, replyT
   const [htmlContent, setHtmlContent] = useState(value);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
+  const [showProductDialog, setShowProductDialog] = useState(false);
+  const [previewCatalog, setPreviewCatalog] = useState<Record<string, unknown>>({});
   const [showModeWarningDialog, setShowModeWarningDialog] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [imageUrl, setImageUrl] = useState('');
@@ -140,6 +144,7 @@ export function EmailEditor({value, onChange, placeholder, subject, from, replyT
         },
       }),
       ResizableImage,
+      ProductBlock,
       Variable,
       VariableMention,
       LogicMention,
@@ -232,6 +237,36 @@ export function EmailEditor({value, onChange, placeholder, subject, from, replyT
     }
   };
 
+  const insertProducts = (options: ProductBlockOptions) => {
+    editor?.chain().focus().insertProductBlock(options).run();
+  };
+
+  // The preview renders in the browser, so products a template references are fetched
+  // the way the server would resolve them for the selected contact.
+  const previewSource = mode === 'visual' ? editor?.getHTML() || '' : htmlContent;
+  const previewProductIds = selectedContactId ? referencedProductIds(previewSource).slice(0, 100).join(',') : '';
+  const previewLocale = (() => {
+    const contact = contacts.find(c => c.id === selectedContactId);
+    const locale = (contact?.data as Record<string, unknown> | null)?.locale;
+    return typeof locale === 'string' ? locale : '';
+  })();
+  useEffect(() => {
+    if (!previewProductIds) {
+      setPreviewCatalog({});
+      return;
+    }
+    let cancelled = false;
+    const query = new URLSearchParams({ids: previewProductIds});
+    if (/^[a-z]{2}(-[A-Z]{2})?$/.test(previewLocale)) query.set('locale', previewLocale);
+    network
+      .fetch<{catalog: Record<string, unknown>}>('GET', `/catalog/render?${query}`)
+      .then(res => !cancelled && setPreviewCatalog(res.catalog))
+      .catch(() => !cancelled && setPreviewCatalog({}));
+    return () => {
+      cancelled = true;
+    };
+  }, [previewProductIds, previewLocale]);
+
   const handleImageUpload = async () => {
     if (!imageFile && !imageUrl) return;
 
@@ -278,6 +313,7 @@ export function EmailEditor({value, onChange, placeholder, subject, from, replyT
       manageUrl: `${window.location.origin}/manage/${contact.id}`,
       data: contact.data || {},
       ...((contact.data as Record<string, unknown> | null) || {}),
+      catalog: previewCatalog,
     };
 
     return replaceVariables(currentHtml, contactData);
@@ -454,6 +490,7 @@ export function EmailEditor({value, onChange, placeholder, subject, from, replyT
             editor={editor}
             onInsertVariable={() => setShowVariableDialog(true)}
             onInsertImage={() => setShowImageDialog(true)}
+            onInsertProducts={() => setShowProductDialog(true)}
             canUploadImages={canUploadImages}
           />
           <div className="min-h-[400px] max-h-[600px] overflow-y-auto">
@@ -777,6 +814,8 @@ export function EmailEditor({value, onChange, placeholder, subject, from, replyT
       />
 
       {/* Image insertion dialog */}
+      <ProductBlockDialog open={showProductDialog} onOpenChange={setShowProductDialog} onInsert={insertProducts} />
+
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

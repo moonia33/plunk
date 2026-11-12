@@ -28,6 +28,21 @@ export class Catalog {
   }
 
   /**
+   * GET /catalog/render?ids=a,b&locale=lt
+   * Products as templates see them (localized, with final price and formatting); used by
+   * the editor preview. Unknown IDs are left out.
+   */
+  @Get('render')
+  @Middleware([requireAuth, requireEmailVerified])
+  @CatchAsync
+  public async render(req: Request, res: Response, _next: NextFunction) {
+    const auth = res.locals.auth;
+    const {ids, locale} = CatalogSchemas.render.parse(req.query);
+    const catalog = await CatalogService.forRender(auth.projectId!, ['catalog'], {context: {productIds: ids}, locale});
+    return res.status(200).json({catalog});
+  }
+
+  /**
    * GET /catalog/products/:id
    */
   @Get('products/:id')

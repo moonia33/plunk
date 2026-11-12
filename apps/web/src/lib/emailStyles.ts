@@ -1,3 +1,4 @@
+import {stripProductBlocks} from '../components/EmailEditor/ProductBlock';
 // Detects if HTML contains custom patterns that indicate it was written in the HTML editor
 // rather than the visual editor. Custom HTML should render as-is without prose wrapper.
 //
@@ -7,8 +8,10 @@
 // round-trip <span style="color: ..."> / <a style="color: ..."> markup that TipTap itself
 // generates when you change text color or style a link. We must therefore PERMIT what
 // TipTap can represent and REJECT only what it can't.
-export const detectCustomHtmlPatterns = (html: string): boolean => {
-  if (!html || html.trim() === '') return false;
+export const detectCustomHtmlPatterns = (source: string): boolean => {
+  if (!source || source.trim() === '') return false;
+  // Product blocks are tables, but the editor owns them (ProductBlock node), so they round-trip.
+  const html = stripProductBlocks(source);
 
   const classMatches = html.matchAll(/class\s*=\s*["']([^"']*)["']/gi);
   let hasCustomClasses = false;

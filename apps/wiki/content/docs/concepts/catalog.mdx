@@ -77,6 +77,10 @@ Response: `{"updated": 1, "notFound": []}`. Supported fields: `price`, `salePric
 - `DELETE /catalog/products/:id`: delete one product.
 - `POST /catalog/products/delete` with `{"ids": ["1042", "1043"]}`: delete up to 1000 products.
 
+## Product blocks in the editor
+
+In the visual editor, the **Insert products** button (shopping bag) searches the catalog and inserts a grid of up to 6 products with 1–3 per row and a button label of your choice. The block is stored as the Liquid shown below, so it can be edited in HTML mode too. When a contact is selected for preview, the editor loads the referenced products for that contact's locale through `GET /catalog/render?ids=1042,1043&locale=lt`.
+
 ## Using products in templates
 
 Templates read products as `catalog["<id>"]`. Plunk loads them right before rendering, so price and stock are always current, and picks the translation matching the contact's `locale`.

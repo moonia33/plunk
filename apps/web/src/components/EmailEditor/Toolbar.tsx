@@ -17,6 +17,7 @@ import {
   Palette,
   Quote,
   Redo,
+  ShoppingBag,
   Strikethrough,
   Undo,
   Variable,
@@ -28,10 +29,11 @@ interface ToolbarProps {
   editor: Editor | null;
   onInsertVariable: () => void;
   onInsertImage: () => void;
+  onInsertProducts: () => void;
   canUploadImages: boolean;
 }
 
-export function Toolbar({editor, onInsertVariable, onInsertImage, canUploadImages}: ToolbarProps) {
+export function Toolbar({editor, onInsertVariable, onInsertImage, onInsertProducts, canUploadImages}: ToolbarProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -564,6 +566,17 @@ export function Toolbar({editor, onInsertVariable, onInsertImage, canUploadImage
         >
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <Image className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onMouseDown={e => e.preventDefault()}
+          onClick={onInsertProducts}
+          className="h-8 w-8"
+          title="Insert products"
+        >
+          <ShoppingBag className="h-4 w-4" />
         </Button>
       </div>
 
