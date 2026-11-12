@@ -18,6 +18,8 @@ import {prisma} from '../database/prisma.js';
 import {HttpException} from '../exceptions/index.js';
 import {DASHBOARD_URI} from '../app/constants.js';
 
+import {unwrapEventContext} from '../utils/eventContext.js';
+
 import {CatalogService} from './CatalogService.js';
 import {ContactFieldService} from './ContactFieldService.js';
 import {EmailService} from './EmailService.js';
@@ -628,10 +630,7 @@ export class WorkflowExecutionService {
         : {};
 
     // Render template with contact data
-    const executionContext =
-      execution.context && typeof execution.context === 'object' && !Array.isArray(execution.context)
-        ? (execution.context as Record<string, unknown>)
-        : {};
+    const executionContext = unwrapEventContext(execution.context);
 
     const variables = {
       id: contact.id,
@@ -810,7 +809,7 @@ export class WorkflowExecutionService {
       contact.data && typeof contact.data === 'object' && !Array.isArray(contact.data)
         ? (contact.data as Record<string, unknown>)
         : {};
-    const context = execution.context || {};
+    const context = unwrapEventContext(execution.context);
 
     // Resolve the field value (support dot notation)
     // Structure allows access to:
@@ -1115,11 +1114,8 @@ export class WorkflowExecutionService {
       contact.data && typeof contact.data === 'object' && !Array.isArray(contact.data)
         ? (contact.data as Record<string, unknown>)
         : {};
-    const executionContext =
-      execution.context && typeof execution.context === 'object' && !Array.isArray(execution.context)
-        ? (execution.context as Record<string, unknown>)
-        : {};
-    const context = execution.context || {};
+    const executionContext = unwrapEventContext(execution.context);
+    const context = executionContext;
 
     // Render scope: SEND_EMAIL's scope (id, email, contact data, execution
     // context, subscribe/unsubscribe/manage URLs) plus a webhook-only
