@@ -84,6 +84,7 @@ model Project {
   events      Event[]
   domains     Domain[]
   apiRequests ApiRequest[]
+  products    Product[]
 
   idempotencyKeys IdempotencyKey[]
   throttleClaims  ThrottleClaim[]
@@ -94,6 +95,52 @@ model Project {
 
   @@index([cardVerification, cardVerificationAt]) // Supports the reconciliation sweep
   @@map("projects")
+}
+
+/// A product in the project's catalog, pushed by the shop through the catalog API.
+/// `externalId` is the shop's own product (or variant) ID and is what the API and
+/// templates (`catalog["<externalId>"]`) use; the uuid `id` never leaves the API.
+/// Prices and availability are read at render time, so every email shows the value
+/// the catalog holds at that moment.
+model Product {
+  id String @id @default(uuid())
+
+  externalId String
+  parentId   String? // externalId of the parent product when this row is a variant
+  sku        String?
+
+  name        String
+  description String?
+  url         String?
+  imageUrl    String?
+  images      Json? // string[] of additional image URLs
+
+  price     Decimal? @db.Decimal(12, 2)
+  salePrice Decimal? @db.Decimal(12, 2)
+  currency  String? // ISO 4217
+
+  available Boolean @default(true)
+  quantity  Int?
+
+  brand      String?
+  categories String[] @default([])
+
+  /// Per-locale overrides of the display fields: { lt: { name, url, price, currency }, ... }
+  translations Json?
+  /// Free-form attributes available to templates as `catalog[id].data`
+  data         Json?
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, externalId])
+  @@index([projectId, name])
+  @@index([projectId, sku])
+  @@index([projectId, parentId])
+  @@map("products")
 }
 
 model Membership {

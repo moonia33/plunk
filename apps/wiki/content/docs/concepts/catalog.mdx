@@ -1,0 +1,117 @@
+---
+title: Product catalog
+description: Push your shop's products to Plunk and show live prices and stock in emails
+icon: ShoppingBag
+---
+
+The product catalog stores your shop's products in Plunk so emails can show them with the price and availability they have **at the moment the email is rendered**. Shops keep the catalog up to date through the API; templates read it through the `catalog` variable.
+
+## Pushing products
+
+All catalog endpoints take your secret key (`Authorization: Bearer sk_...`). Product IDs are your shop's own IDs (strings or numbers).
+
+### Create or replace products
+
+`PUT /catalog/products` creates or **fully replaces** up to 500 products per request. Fields left out of a product are cleared, so always send the whole product.
+
+```json
+{
+  "products": [
+    {
+      "id": "1042",
+      "sku": "SH-SPIN-270",
+      "name": "Shimano spinning rod 2.70 m",
+      "url": "https://shop.example/en/1042-spinning-rod",
+      "imageUrl": "https://cdn.shop.example/1042.jpg",
+      "price": 89.9,
+      "salePrice": 74.9,
+      "currency": "EUR",
+      "available": true,
+      "quantity": 12,
+      "brand": "Shimano",
+      "categories": ["Rods", "Spinning rods"],
+      "translations": {
+        "lt": {"name": "Shimano spiningas 2,70 m", "url": "https://shop.example/lt/1042-spiningas"},
+        "pl": {"name": "Wędka spinningowa Shimano 2,70 m", "price": 389, "salePrice": 329, "currency": "PLN"}
+      },
+      "data": {"length": "2.70 m"}
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string \| number | **Required.** Your product (or variant) ID |
+| `name` | string | **Required.** Default product name |
+| `parentId` | string \| number | Parent product ID when this product is a variant |
+| `sku` | string | SKU, searchable |
+| `description` | string | Short description, up to 5000 characters |
+| `url`, `imageUrl` | string | Absolute `http(s)` URLs |
+| `images` | string[] | Up to 20 additional image URLs |
+| `price`, `salePrice` | number | Regular and discounted price. `salePrice` only counts when it is lower than `price` |
+| `currency` | string | ISO 4217 code, e.g. `EUR` |
+| `available` | boolean | Defaults to `true`. Unavailable products should be hidden in emails |
+| `quantity` | integer | Stock quantity |
+| `brand` | string | Brand or manufacturer |
+| `categories` | string[] | Up to 50 category names |
+| `translations` | object | Per-locale overrides of `name`, `description`, `url`, `imageUrl`, `price`, `salePrice` and `currency`, keyed by ISO 639-1 code (`lt`, `en-GB`) |
+| `data` | object | Free-form attributes, up to 16 KB as JSON |
+
+Response: `{"upserted": 1}`. When the same ID appears twice in one request, the last one wins.
+
+### Update price and stock
+
+`PATCH /catalog/products` changes only the fields you send for up to 1000 existing products. Use it from stock and price change hooks. `null` clears a field.
+
+```json
+{"products": [{"id": "1042", "salePrice": null, "available": false, "quantity": 0}]}
+```
+
+Response: `{"updated": 1, "notFound": []}`. Supported fields: `price`, `salePrice`, `currency`, `available`, `quantity`.
+
+### List, read and delete
+
+- `GET /catalog/products?search=&limit=&cursor=`: products ordered by name, 20 per page by default (max 100). `search` matches part of the name, or an exact ID or SKU. Pass the returned `cursor` to get the next page while `hasMore` is `true`.
+- `GET /catalog/products/:id`: a single product.
+- `DELETE /catalog/products/:id`: delete one product.
+- `POST /catalog/products/delete` with `{"ids": ["1042", "1043"]}`: delete up to 1000 products.
+
+## Using products in templates
+
+Templates read products as `catalog["<id>"]`. Plunk loads them right before rendering, so price and stock are always current, and picks the translation matching the contact's `locale`.
+
+```liquid
+{% assign p = catalog["1042"] %}
+{% if p.available %}
+  <a href="{{ p.url }}"><img src="{{ p.imageUrl }}" alt="{{ p.name | escape }}"></a>
+  <p>{{ p.name | escape }}</p>
+  {% if p.onSale %}<s>{{ p.priceFormatted }}</s> {{ p.salePriceFormatted }} (-{{ p.discountPercent }}%)
+  {% else %}{{ p.priceFormatted }}{% endif %}
+{% endif %}
+```
+
+Wrap products in `{% if p.available %}`: a product that is sold out, deleted or unknown then disappears from the email instead of showing an empty card.
+
+| Field | Description |
+| --- | --- |
+| `id`, `parentId`, `sku`, `brand`, `categories`, `images`, `quantity`, `data` | As stored |
+| `name`, `description`, `url`, `imageUrl` | Localized for the contact |
+| `price`, `salePrice`, `currency` | Localized; `salePrice` is `null` unless the product is on sale |
+| `finalPrice` | `salePrice` when on sale, otherwise `price` |
+| `onSale`, `discountPercent` | Whether the product is discounted, and by how many percent |
+| `priceFormatted`, `salePriceFormatted`, `finalPriceFormatted` | Money formatted for the contact's locale, e.g. `74,90 €` |
+| `available` | `false` for sold-out products; missing products are simply absent |
+
+### Products from events and webhooks
+
+Besides products referenced directly as `catalog["<id>"]`, Plunk loads every product whose ID appears under a `productId`, `product_id`, `productIds` or `product_ids` key in the event data (up to 6 levels deep). This covers cart and order items sent with `/v1/track`, and recommendations returned by a [WEBHOOK step](/guides/webhooks) saved with `saveResponseAs`:
+
+```liquid
+{% for item in event.cart.items %}
+  {% assign p = catalog[item.productId] %}
+  {% if p.available %}<p>{{ p.name | escape }}: {{ p.finalPriceFormatted }}</p>{% endif %}
+{% endfor %}
+```
+
+One email loads at most 100 products. Templates that never mention `catalog` do not query the catalog at all.

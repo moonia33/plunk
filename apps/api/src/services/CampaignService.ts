@@ -20,6 +20,7 @@ import type {ListSort} from '../utils/listSort.js';
 import {buildEmailFieldsUpdate} from '../utils/modelUpdate.js';
 
 import {BillingLimitService} from './BillingLimitService.js';
+import {CatalogService} from './CatalogService.js';
 import {DomainService} from './DomainService.js';
 import {buildEmailHeaders, classifyEmail} from './EmailHeaderService.js';
 import {EmailService} from './EmailService.js';
@@ -670,6 +671,9 @@ export class CampaignService {
     // subject and body are identical for every contact, only the variables differ.
     const subjectTemplate = compileTemplate(campaign.subject);
     const bodyTemplate = compileTemplate(campaign.body);
+    // Products the campaign references, loaded once per batch at send time so every
+    // batch shows current prices and stock; localized per contact below.
+    const catalog = await CatalogService.snapshot(campaign.projectId, [campaign.subject, campaign.body]);
 
     // Queue emails for each contact
     for (const contact of contacts) {
@@ -682,6 +686,7 @@ export class CampaignService {
           email: contact.email,
           ...contactData,
           data: contactData,
+          catalog: catalog.forLocale((contactData as Record<string, unknown>).locale),
           unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
           subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
           manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,

@@ -18,6 +18,7 @@ import {prisma} from '../database/prisma.js';
 import {HttpException} from '../exceptions/index.js';
 import {DASHBOARD_URI} from '../app/constants.js';
 
+import {CatalogService} from './CatalogService.js';
 import {ContactFieldService} from './ContactFieldService.js';
 import {EmailService} from './EmailService.js';
 import {NtfyService} from './NtfyService.js';
@@ -642,6 +643,11 @@ export class WorkflowExecutionService {
       ...executionContext,
       data: contactData,
       event: executionContext,
+      catalog: await CatalogService.forRender(
+        execution.workflow.projectId,
+        [step.template.subject, step.template.body],
+        {context: executionContext, locale: contactData.locale},
+      ),
       unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
       subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
       manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
