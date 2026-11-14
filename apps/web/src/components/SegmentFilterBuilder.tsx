@@ -306,7 +306,7 @@ const FilterRow = memo(function FilterRow({filter, onChange, onRemove, available
         const isOperatorValid = validOperators.some(op => op.value === filter.operator);
 
         if (!isOperatorValid) {
-          newOperator = 'equals';
+          newOperator = validOperators[0]?.value ?? 'equals';
         }
 
         // Reset value to appropriate default for new type

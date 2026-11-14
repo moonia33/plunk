@@ -977,7 +977,13 @@ export class SegmentService {
       case 'arrayContains':
         return {data: {path, array_contains: [value] as Prisma.InputJsonValue}};
       case 'arrayNotContains':
-        return {NOT: {data: {path, array_contains: [value] as Prisma.InputJsonValue}}};
+        // `@> []` holds for every array and no scalar, so only array fields can match
+        return {
+          AND: [
+            {data: {path, array_contains: [] as Prisma.InputJsonValue}},
+            {NOT: {data: {path, array_contains: [value] as Prisma.InputJsonValue}}},
+          ],
+        };
       case 'greaterThan':
         return {data: {path, gt: value as Prisma.InputJsonValue}};
       case 'lessThan':
