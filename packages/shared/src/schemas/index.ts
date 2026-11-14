@@ -148,6 +148,8 @@ const segmentFilterSchema = z.object({
     'notEquals',
     'contains',
     'notContains',
+    'arrayContains',
+    'arrayNotContains',
     'greaterThan',
     'lessThan',
     'greaterThanOrEqual',
