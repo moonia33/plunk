@@ -223,7 +223,7 @@ export class ContactFieldService {
       return 'string';
     }
 
-    if (typeMin === 'boolean' || typeMin === 'number') {
+    if (typeMin === 'boolean' || typeMin === 'number' || typeMin === 'array') {
       return typeMin;
     }
 
