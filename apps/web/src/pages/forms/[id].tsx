@@ -109,6 +109,13 @@ const lines = (value: string) =>
     .map(line => line.trim())
     .filter(Boolean);
 
+function nextFieldKey(fields: FormField[]): string {
+  const used = new Set(fields.map(field => field.key));
+  let n = 1;
+  while (used.has(n === 1 ? 'interests' : `interests${n}`)) n++;
+  return n === 1 ? 'interests' : `interests${n}`;
+}
+
 export default function FormEditorPage() {
   const router = useRouter();
   const id = typeof router.query.id === 'string' ? router.query.id : undefined;
@@ -438,7 +445,7 @@ export default function FormEditorPage() {
                       fields: [
                         ...draft.fields,
                         {
-                          key: draft.fields.length ? `interests${draft.fields.length + 1}` : 'interests',
+                          key: nextFieldKey(draft.fields),
                           label: {},
                           options: [],
                         },
