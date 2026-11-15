@@ -19,6 +19,7 @@ import {createCardVerificationWorker} from './card-verification-processor.js';
 import {createContactFieldsWorker} from './contact-fields-processor.js';
 import {createCampaignStatsSweepWorker} from './campaign-stats-sweep-processor.js';
 import {createScheduledEmailSweepWorker} from './scheduled-email-sweep-processor.js';
+import {createFormStatsWorker} from './form-stats-processor.js';
 import {createSnoozeSweepWorker} from './snooze-sweep-processor.js';
 import {createCardVerificationSweepWorker} from './card-verification-sweep-processor.js';
 import {createDomainVerificationWorker} from './domain-verification-processor.js';
@@ -59,6 +60,9 @@ async function startWorkers() {
     // Start snooze sweep worker
     const snoozeSweepWorker = createSnoozeSweepWorker();
     workers.push({name: 'snooze-sweep', worker: snoozeSweepWorker});
+
+    // Start form stats flush worker
+    workers.push({name: 'form-stats', worker: createFormStatsWorker()});
     signale.success('[WORKER] Snooze sweep worker started');
 
     // Start scheduled email sweep worker

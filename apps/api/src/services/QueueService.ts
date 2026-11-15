@@ -15,6 +15,7 @@ import type {
   CampaignCancelCleanupJobData,
   ContactFieldsJobData,
   EmailBodyCleanupJobData,
+  FormStatsFlushJobData,
   IdempotencyKeyCleanupJobData,
   MeterEventJobData,
   ScheduledCampaignJobData,
@@ -267,6 +268,20 @@ export const cardVerificationSweepQueue = new Queue<CardVerificationSweepJobData
  * only ever acts on contacts that are still due, so a repeat run after a failure does nothing
  * to the ones it already woke.
  */
+/** Moves buffered form view counts from Redis to the database. */
+export const formStatsQueue = new Queue<FormStatsFlushJobData>('form-stats', {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 2,
+    backoff: {
+      type: 'exponential',
+      delay: 10000,
+    },
+    removeOnComplete: 20,
+    removeOnFail: 50,
+  },
+});
+
 export const snoozeSweepQueue = new Queue<SnoozeSweepJobData>('snooze-sweep', {
   connection: redisConnection,
   defaultJobOptions: {

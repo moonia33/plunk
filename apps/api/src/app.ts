@@ -35,6 +35,7 @@ import {Contacts} from './controllers/Contacts.js';
 import {Domains} from './controllers/Domains.js';
 import {Emails} from './controllers/Emails.js';
 import {Events} from './controllers/Events.js';
+import {Forms} from './controllers/Forms.js';
 import {Oauth} from './controllers/Oauth/index.js';
 import {Projects} from './controllers/Projects.js';
 import {Segments} from './controllers/Segments.js';
@@ -57,6 +58,7 @@ import {
   scheduledEmailSweepQueue,
   segmentCountQueue,
   snoozeSweepQueue,
+  formStatsQueue,
 } from './services/QueueService.js';
 import * as S3Service from './services/S3Service.js';
 import {verifyConfigurationSets} from './services/SESService.js';
@@ -96,7 +98,7 @@ const server = new (class extends Server {
     const allowedOrigins = ALLOWED_ORIGINS;
 
     // Public API endpoints that should allow all origins
-    const publicApiPaths = ['/v1', '/v1/track', '/v1/send'];
+    const publicApiPaths = ['/v1', '/v1/track', '/v1/send', '/forms/public', '/forms/embed.js'];
 
     // Log CORS configuration on startup
     signale.info('CORS configuration', {
@@ -171,6 +173,7 @@ const server = new (class extends Server {
       new Webhooks(),
       new Workflows(),
       new Events(),
+      new Forms(),
       new Config(),
     ]);
 
@@ -600,6 +603,21 @@ void prisma.$connect().then(async () => {
   );
 
   signale.info('[BACKGROUND-JOB] Snooze sweep scheduled (BullMQ repeatable job, runs every 5 minutes)');
+
+  // Every minute: form views are counted in Redis (one HINCRBY per view) and moved to the
+  // forms table in one update per form, so a busy shop page does not write a row per view.
+  await formStatsQueue.add(
+    'flush-form-views',
+    {},
+    {
+      repeat: {
+        pattern: '* * * * *',
+      },
+      jobId: 'form-stats-repeatable',
+    },
+  );
+
+  signale.info('[BACKGROUND-JOB] Form stats flush scheduled (BullMQ repeatable job, runs every minute)');
 
   // Set up repeatable job for the scheduled email sweep (BullMQ)
   // Every 5 minutes: a scheduled transactional email is sent by its own delayed job; this only

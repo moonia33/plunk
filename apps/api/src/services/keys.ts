@@ -1,4 +1,26 @@
 export const Keys = {
+  Form: {
+    /** Active forms of a project, as served to the embed script. */
+    active(projectId: string): string {
+      return `form:active:${projectId}`;
+    },
+    /** Turnstile widget settings of a project, including its secret. */
+    turnstile(projectId: string): string {
+      return `form:turnstile:${projectId}`;
+    },
+    /** Hash of buffered view counts, field = form id. Flushed to the database by a job. */
+    views(): string {
+      return 'form:views';
+    },
+    /** Submissions from one IP to one project in the current hour. */
+    submitLimit(projectId: string, ip: string): string {
+      return `form:submit:${projectId}:${ip}`;
+    },
+    /** Short-lived handle that lets the second step update the contact it created. */
+    step2(token: string): string {
+      return `form:step2:${token}`;
+    },
+  },
   User: {
     id(id: string): string {
       return `account:id:${id}`;

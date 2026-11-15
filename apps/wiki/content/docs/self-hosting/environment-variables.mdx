@@ -195,6 +195,17 @@ Variables for unusual deployments. The defaults work for the standard Docker Com
 | ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------ | ------- |
 | `NGINX_PORT` | No       | Host port the bundled Nginx reverse proxy binds to. Override when port 80/443 is already in use on the host (e.g. running behind another reverse proxy that forwards to a different port). | `80`    |
 
+## Signup Forms
+
+Signup forms served by `/forms/embed.js` can require a [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) token on every submission.
+
+| Variable                     | Required | Description                                                                                                                                                                  | Default |
+| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `FORM_CLIENT_IP_HEADER`      | No       | Request header with the visitor IP (e.g. `cf-connecting-ip`). Set it only when the proxy in front overwrites the header and the origin is reachable through that proxy alone. | —       |
+| `FORM_SUBMIT_LIMIT_PER_HOUR` | No       | Maximum form submissions per IP address per project per hour.                                                                                                                | `10`    |
+
+Cloudflare Turnstile is configured per project on the **Forms** page of the dashboard.
+
 ## Phishing Detection
 
 Plunk can use AI to detect and block phishing emails before they're sent. Requires an [OpenRouter](https://openrouter.ai) API key.

@@ -516,23 +516,21 @@ export const CampaignSchemas = {
   }),
 } as const;
 
-const throttleWindow = z
-  .string()
-  .transform((value, ctx) => {
-    const seconds = parseDuration(value);
+const throttleWindow = z.string().transform((value, ctx) => {
+  const seconds = parseDuration(value);
 
-    if (seconds === null) {
-      ctx.addIssue({code: z.ZodIssueCode.custom, message: 'Use a duration like "30m", "24h" or "7d"'});
-      return z.NEVER;
-    }
+  if (seconds === null) {
+    ctx.addIssue({code: z.ZodIssueCode.custom, message: 'Use a duration like "30m", "24h" or "7d"'});
+    return z.NEVER;
+  }
 
-    if (seconds < MIN_THROTTLE_WINDOW_SECONDS || seconds > MAX_THROTTLE_WINDOW_SECONDS) {
-      ctx.addIssue({code: z.ZodIssueCode.custom, message: 'The throttle window must be between 1 minute and 365 days'});
-      return z.NEVER;
-    }
+  if (seconds < MIN_THROTTLE_WINDOW_SECONDS || seconds > MAX_THROTTLE_WINDOW_SECONDS) {
+    ctx.addIssue({code: z.ZodIssueCode.custom, message: 'The throttle window must be between 1 minute and 365 days'});
+    return z.NEVER;
+  }
 
-    return seconds;
-  });
+  return seconds;
+});
 
 /**
  * `delivery.at`: an ISO 8601 date with a timezone, at most MAX_SCHEDULE_DAYS ahead. Parses to
@@ -654,7 +652,12 @@ export const ActionSchemas = {
           ]),
         ),
       ]),
-      subject: z.string().min(1).max(998).regex(/^[^\r\n]*$/, 'Subject contains invalid characters').optional(),
+      subject: z
+        .string()
+        .min(1)
+        .max(998)
+        .regex(/^[^\r\n]*$/, 'Subject contains invalid characters')
+        .optional(),
       body: z.string().min(1).optional(),
       template: uuid.optional(),
       subscribed: z.boolean().optional(),
@@ -665,7 +668,10 @@ export const ActionSchemas = {
             email, // Simple email string (backward compatible)
             z.object({
               // Object with name and email
-              name: z.string().regex(/^[^\r\n]*$/, 'Name contains invalid characters').optional(),
+              name: z
+                .string()
+                .regex(/^[^\r\n]*$/, 'Name contains invalid characters')
+                .optional(),
               email: email,
             }),
           ],
@@ -686,29 +692,37 @@ export const ActionSchemas = {
       headers: z
         .record(
           z.string().regex(/^[^\r\n]+$/, 'Header key contains invalid characters'),
-          z.string().max(998).regex(/^[^\r\n]*$/, 'Header value contains invalid characters'),
+          z
+            .string()
+            .max(998)
+            .regex(/^[^\r\n]*$/, 'Header value contains invalid characters'),
         )
         .optional(),
       data: jsonSchema.optional(),
       attachments: z
         .array(
-          z.object({
-            filename: z.string().min(1).max(255).regex(/^[^\r\n"]+$/, 'Filename contains invalid characters'),
-            content: z.string().min(1), // Base64 encoded file content
-            // Goes verbatim into the part's Content-Type header, so a line break would inject headers
-            contentType: z
-              .string()
-              .min(1)
-              .max(255)
-              .regex(/^[^\x00-\x1f\x7f]+$/, 'Content type contains invalid characters'),
-            contentId: z
-              .string()
-              .min(1)
-              .max(255)
-              .regex(/^[^<>\r\n]+$/, 'Content ID cannot contain <, >, \\r, or \\n')
-              .optional(),
-            disposition: z.enum(['attachment', 'inline']).default('attachment'),
-          })
+          z
+            .object({
+              filename: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[^\r\n"]+$/, 'Filename contains invalid characters'),
+              content: z.string().min(1), // Base64 encoded file content
+              // Goes verbatim into the part's Content-Type header, so a line break would inject headers
+              contentType: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[^\x00-\x1f\x7f]+$/, 'Content type contains invalid characters'),
+              contentId: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[^<>\r\n]+$/, 'Content ID cannot contain <, >, \\r, or \\n')
+                .optional(),
+              disposition: z.enum(['attachment', 'inline']).default('attachment'),
+            })
             .refine(data => data.disposition !== 'inline' || !!data.contentId, {
               message: 'Content ID is required when disposition is inline',
               path: ['contentId'],
@@ -854,7 +868,12 @@ export const CatalogSchemas = {
     ids: z
       .string()
       .max(4000)
-      .transform(value => value.split(',').map(id => id.trim()).filter(Boolean))
+      .transform(value =>
+        value
+          .split(',')
+          .map(id => id.trim())
+          .filter(Boolean),
+      )
       .pipe(z.array(z.string().max(191)).min(1).max(100)),
     locale: catalogLocale.optional(),
   }),
@@ -865,3 +884,149 @@ export const CatalogSchemas = {
     parentId: z.string().trim().min(1).max(191).optional(),
   }),
 } as const;
+
+/** Contact fields a form question must not write: system fields and the ones a signup sets. */
+const FORM_RESERVED_FIELD_KEYS = [
+  'id',
+  'email',
+  'plunk_id',
+  'plunk_email',
+  'unsubscribeUrl',
+  'subscribeUrl',
+  'manageUrl',
+  'locale',
+  'subscribed',
+  'signupFormId',
+  'signupAt',
+  'consentVersion',
+];
+
+const formLocale = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/, 'Use an ISO 639-1 code, e.g. lt or en-GB');
+const formText = (max: number) => z.string().trim().max(max);
+const formLocalized = (max: number) =>
+  z.record(formLocale, formText(max)).refine(value => Object.keys(value).length <= 20, 'At most 20 locales');
+const formColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #rrggbb color');
+
+const formContent = z.object({
+  title: formText(200).min(1),
+  body: formText(1000).optional(),
+  emailPlaceholder: formText(100).optional(),
+  button: formText(60).min(1),
+  consentText: formText(1000).optional(),
+  successTitle: formText(200).optional(),
+  successBody: formText(1000).optional(),
+  step2Title: formText(200).optional(),
+  step2Button: formText(60).optional(),
+  barText: formText(200).optional(),
+});
+
+const formField = z.object({
+  key: z
+    .string()
+    .regex(/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/, 'Letters, digits and _ only, starting with a letter')
+    .refine(key => !FORM_RESERVED_FIELD_KEYS.includes(key), 'This contact field is used by Plunk'),
+  label: formLocalized(200),
+  options: z
+    .array(
+      z.object({
+        value: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/, 'Lowercase slug, e.g. karpine'),
+        label: formLocalized(100),
+      }),
+    )
+    .min(1)
+    .max(30),
+});
+
+const formRules = z.object({
+  trigger: z.enum(['immediate', 'delay', 'scroll', 'exit']).default('delay'),
+  delaySeconds: z.number().int().min(0).max(600).default(8),
+  scrollPercent: z.number().int().min(0).max(100).default(50),
+  minPageviews: z.number().int().min(1).max(50).default(1),
+  urlInclude: z.array(z.string().trim().min(1).max(300)).max(50).default([]),
+  urlExclude: z.array(z.string().trim().min(1).max(300)).max(50).default([]),
+  locales: z.array(formLocale).max(20).default([]),
+  hideForSubscribers: z.boolean().default(true),
+  hideForCustomers: z.boolean().default(false),
+  dismissDays: z.number().int().min(0).max(365).default(14),
+  mobile: z.enum(['same', 'slide_in', 'hide']).default('slide_in'),
+});
+
+const formStyle = z.object({
+  accent: formColor.optional(),
+  background: formColor.optional(),
+  text: formColor.optional(),
+  imageUrl: z
+    .string()
+    .max(2048)
+    .url()
+    .refine(value => /^https:\/\//i.test(value), 'Must be an https URL')
+    .optional(),
+  position: z.enum(['bottom-right', 'bottom-left', 'top', 'bottom']).optional(),
+});
+
+const formBody = z.object({
+  name: z.string().trim().min(1).max(191),
+  type: z.enum(['INLINE', 'POPUP', 'SLIDE_IN', 'BAR', 'PAGE']),
+  status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED']).default('DRAFT'),
+  content: z
+    .record(formLocale, formContent)
+    .refine(value => Object.keys(value).length >= 1, 'Add texts for at least one locale')
+    .refine(value => Object.keys(value).length <= 20, 'At most 20 locales'),
+  fields: z
+    .array(formField)
+    .max(3)
+    .refine(
+      fields => new Set(fields.map(field => field.key)).size === fields.length,
+      'Each question needs its own contact field',
+    )
+    .default([]),
+  rules: formRules.default({}),
+  style: formStyle.default({}),
+  doubleOptIn: z.boolean().default(true),
+});
+
+export const FormSchemas = {
+  content: formContent,
+  field: formField,
+  rules: formRules,
+  style: formStyle,
+  create: formBody,
+  update: formBody.partial(),
+  publicConfig: z.object({
+    key: z.string().min(1).max(191),
+    locale: formLocale.optional(),
+  }),
+  publicView: z.object({
+    key: z.string().min(1).max(191),
+  }),
+  publicSubmit: z.object({
+    key: z.string().min(1).max(191),
+    email: z.string().trim().toLowerCase().email().max(254),
+    locale: formLocale.optional(),
+    url: z.string().max(2048).optional(),
+    /** Honeypot: hidden input that people leave empty. */
+    website: z.string().max(500).optional(),
+    turnstileToken: z.string().max(4096).optional(),
+  }),
+  settings: z.object({
+    turnstileEnabled: z.boolean().optional(),
+    turnstileSiteKey: z.string().trim().max(100).nullable().optional(),
+    // Empty string clears the stored secret; omit it to keep the current one.
+    turnstileSecret: z.string().trim().max(200).optional(),
+    turnstileHostnames: z
+      .array(
+        z
+          .string()
+          .trim()
+          .toLowerCase()
+          .regex(/^(?=.{1,253}$)([a-z0-9-]+\.)*[a-z0-9-]+$/, 'Enter a hostname such as shop.example.com'),
+      )
+      .max(20)
+      .optional(),
+  }),
+  publicFields: z.object({
+    key: z.string().min(1).max(191),
+    token: z.string().min(16).max(128),
+    fields: z.record(z.string().max(64), z.array(z.string().max(64)).max(30)),
+  }),
+};
