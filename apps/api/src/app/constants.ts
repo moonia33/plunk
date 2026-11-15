@@ -191,7 +191,10 @@ export const PHISHING_CUMULATIVE_THRESHOLD = Number(validateEnv('PHISHING_CUMULA
 export const PHISHING_CUMULATIVE_WINDOW_MS = Number(validateEnv('PHISHING_CUMULATIVE_WINDOW_MS', '3600000')); // Time window for cumulative tracking in ms (default 1 hour)
 
 // Signup forms. Turnstile is configured per project in the dashboard.
-// Request header carrying the visitor IP, set by a proxy that overwrites it (e.g. cf-connecting-ip
-// when the origin only accepts Cloudflare). Empty: the socket address is used.
-export const FORM_CLIENT_IP_HEADER = validateEnv('FORM_CLIENT_IP_HEADER', '').trim().toLowerCase();
+// Reverse proxies in front of the API that append to X-Forwarded-For (the bundled nginx counts as one).
+// The visitor IP is the entry added by the outermost of them. 0: the socket address is used.
+export const FORM_TRUSTED_PROXY_HOPS = Math.max(
+  0,
+  Math.floor(Number(validateEnv('FORM_TRUSTED_PROXY_HOPS', '0')) || 0),
+);
 export const FORM_SUBMIT_LIMIT_PER_HOUR = Number(validateEnv('FORM_SUBMIT_LIMIT_PER_HOUR', '10'));

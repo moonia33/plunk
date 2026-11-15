@@ -2,23 +2,14 @@ import {Controller, Delete, Get, Middleware, Patch, Post} from '@overnightjs/cor
 import {FormSchemas} from '@plunk/shared';
 import type {NextFunction, Request, Response} from 'express';
 
-import {FORM_CLIENT_IP_HEADER} from '../app/constants.js';
+import {FORM_TRUSTED_PROXY_HOPS} from '../app/constants.js';
 import {HttpException} from '../exceptions/index.js';
 import {EMBED_SCRIPT} from '../forms/embed.js';
 import {requireAuth, requireEmailVerified} from '../middleware/auth.js';
 import {FormService, TURNSTILE_ACTION} from '../services/FormService.js';
 import {ProjectService} from '../services/ProjectService.js';
 import {CatchAsync} from '../utils/asyncHandler.js';
-
-/** Visitor IP. Headers are client-controlled, so only the one a trusted proxy overwrites is read. */
-function clientIp(req: Request): string {
-  if (FORM_CLIENT_IP_HEADER) {
-    const value = req.headers[FORM_CLIENT_IP_HEADER];
-    const first = (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim();
-    if (first) return first;
-  }
-  return req.socket.remoteAddress || 'unknown';
-}
+import {clientIp} from '../utils/clientIp.js';
 
 /** Public endpoints are called from shop pages with the project's public (pk_) key. */
 async function projectFromPublicKey(key: string): Promise<string> {
@@ -76,7 +67,12 @@ export class Forms {
   public async submit(req: Request, res: Response, _next: NextFunction) {
     const input = FormSchemas.publicSubmit.parse(req.body);
     const projectId = await projectFromPublicKey(input.key);
-    const result = await FormService.submit(projectId, String(req.params.id), input, clientIp(req));
+    const result = await FormService.submit(
+      projectId,
+      String(req.params.id),
+      input,
+      clientIp(req, FORM_TRUSTED_PROXY_HOPS),
+    );
     return res.status(200).json(result);
   }
 

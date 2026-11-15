@@ -1,3 +1,4 @@
 import {PrismaClient} from '@prisma/client';
 
-export const prisma = new PrismaClient();
+// Credentials are never part of a default project read; fetch them with an explicit select.
+export const prisma = new PrismaClient({omit: {project: {turnstileSecret: true}}});

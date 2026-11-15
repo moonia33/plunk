@@ -195,7 +195,7 @@ services:
       AUTO_PROJECT_DISABLE: ${AUTO_PROJECT_DISABLE:-false}
 
       # Signup forms
-      FORM_CLIENT_IP_HEADER: ${FORM_CLIENT_IP_HEADER:-}
+      FORM_TRUSTED_PROXY_HOPS: ${FORM_TRUSTED_PROXY_HOPS:-1}
       FORM_SUBMIT_LIMIT_PER_HOUR: ${FORM_SUBMIT_LIMIT_PER_HOUR:-10}
 
       # Self-hosting user management (documented in .env.self-host.example

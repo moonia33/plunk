@@ -438,7 +438,8 @@ export class FormService {
   private static async turnstile(
     projectId: string,
   ): Promise<{siteKey: string; secret: string; hostnames: string[]} | null> {
-    return wrapRedis(
+    // Wrapped in an object so a disabled project (null) is cached too.
+    const {config} = await wrapRedis(
       Keys.Form.turnstile(projectId),
       async () => {
         const project = await prisma.project.findUnique({
@@ -446,16 +447,19 @@ export class FormService {
           select: {turnstileEnabled: true, turnstileSiteKey: true, turnstileSecret: true, turnstileHostnames: true},
         });
         if (!project?.turnstileEnabled || !project.turnstileSiteKey || !project.turnstileSecret) {
-          return null;
+          return {config: null};
         }
         return {
-          siteKey: project.turnstileSiteKey,
-          secret: project.turnstileSecret,
-          hostnames: project.turnstileHostnames,
+          config: {
+            siteKey: project.turnstileSiteKey,
+            secret: project.turnstileSecret,
+            hostnames: project.turnstileHostnames,
+          },
         };
       },
       ACTIVE_CACHE_SECONDS,
     );
+    return config;
   }
 
   /** Canonical Turnstile siteverify. Fails closed. A no-op when the project has Turnstile off. */

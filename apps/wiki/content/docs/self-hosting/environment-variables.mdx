@@ -5,15 +5,15 @@ description: Configuration reference
 
 ## Security & Database
 
-| Variable       | Required | Description                                                                  | Example                                           |
-| -------------- | -------- | ---------------------------------------------------------------------------- | ------------------------------------------------- |
-| `JWT_SECRET`          | Yes      | Secret key used to sign JWT tokens. Generate with `openssl rand -base64 32`. | `s3cr3t...`                                       |
-| `DB_PASSWORD`         | Yes      | PostgreSQL database password. Used by the Docker Compose setup.              | `changeme123`                                     |
+| Variable              | Required | Description                                                                                                                    | Example                                           |
+| --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| `JWT_SECRET`          | Yes      | Secret key used to sign JWT tokens. Generate with `openssl rand -base64 32`.                                                   | `s3cr3t...`                                       |
+| `DB_PASSWORD`         | Yes      | PostgreSQL database password. Used by the Docker Compose setup.                                                                | `changeme123`                                     |
 | `DATABASE_URL`        | Yes      | Full PostgreSQL connection string used by the application at runtime (typically through PgBouncer). Auto-configured in Docker. | `postgresql://plunk:password@postgres:5432/plunk` |
 | `DIRECT_DATABASE_URL` | Yes      | Direct PostgreSQL connection string used by Prisma migrations. Must bypass any connection pooler. Auto-configured in Docker.   | `postgresql://plunk:password@postgres:5432/plunk` |
-| `REDIS_URL`           | Yes      | Redis connection string.                                                     | `redis://redis:6379`                              |
-| `NODE_ENV`            | No       | Application environment. Set to `production` for production deployments.     | `production`                                      |
-| `PORT`                | No       | Port the API server listens on.                                              | `8080` (default)                                  |
+| `REDIS_URL`           | Yes      | Redis connection string.                                                                                                       | `redis://redis:6379`                              |
+| `NODE_ENV`            | No       | Application environment. Set to `production` for production deployments.                                                       | `production`                                      |
+| `PORT`                | No       | Port the API server listens on.                                                                                                | `8080` (default)                                  |
 
 ## URLs & Domains
 
@@ -29,13 +29,13 @@ Set your subdomains here. The application automatically derives all internal and
 
 ## AWS SES
 
-| Variable                            | Required | Description                                                                                                                                      | Example                                         |
-| ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| `AWS_SES_REGION`                    | Yes      | AWS region where SES is configured.                                                                                                              | `us-east-1`                                     |
-| `AWS_SES_ACCESS_KEY_ID`             | Yes      | AWS access key ID with SES send permissions.                                                                                                     | `AKIA...`                                       |
-| `AWS_SES_SECRET_ACCESS_KEY`         | Yes      | AWS secret access key for SES.                                                                                                                   | `wJalr...`                                      |
-| `SES_CONFIGURATION_SET`             | No       | SES configuration set name used for open/click tracking.                                                                                         | `plunk-configuration-set` (default)             |
-| `SES_CONFIGURATION_SET_NO_TRACKING` | No       | A second SES configuration set without tracking. When set, projects can toggle email tracking on/off. If omitted, the tracking toggle is hidden. | `plunk-no-tracking-configuration-set` (default) |
+| Variable                            | Required | Description                                                                                                                                                                                                                                                                                                                                                          | Example                                         |
+| ----------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `AWS_SES_REGION`                    | Yes      | AWS region where SES is configured.                                                                                                                                                                                                                                                                                                                                  | `us-east-1`                                     |
+| `AWS_SES_ACCESS_KEY_ID`             | Yes      | AWS access key ID with SES send permissions.                                                                                                                                                                                                                                                                                                                         | `AKIA...`                                       |
+| `AWS_SES_SECRET_ACCESS_KEY`         | Yes      | AWS secret access key for SES.                                                                                                                                                                                                                                                                                                                                       | `wJalr...`                                      |
+| `SES_CONFIGURATION_SET`             | No       | SES configuration set name used for open/click tracking.                                                                                                                                                                                                                                                                                                             | `plunk-configuration-set` (default)             |
+| `SES_CONFIGURATION_SET_NO_TRACKING` | No       | A second SES configuration set without tracking. When set, projects can toggle email tracking on/off. If omitted, the tracking toggle is hidden.                                                                                                                                                                                                                     | `plunk-no-tracking-configuration-set` (default) |
 | `MAIL_FROM_SUBDOMAIN`               | No       | Subdomain prefix used when constructing the MAIL FROM hostname for a verified domain (e.g. with default `plunk` and domain `yourdomain.com`, the MAIL FROM is `plunk.yourdomain.com`). Override when the default subdomain is already in use (e.g. by an R2/CDN custom domain), since the MAIL FROM hostname needs MX + TXT records that can't coexist with a CNAME. | `plunk`                                         |
 
 ## Storage (Minio)
@@ -57,21 +57,21 @@ The bundled Docker setup includes Minio with defaults that work out of the box. 
 | `S3_PREFIX`            | No       | Upload folder in the bucket; only it is made publicly readable.    | —                   |
 
 <Callout type="warn">
-  Setting `S3_PREFIX` on an instance that already has uploads breaks every image uploaded before it. The bucket
-  policy is replaced to only make objects under the prefix publicly readable, so files at the bucket root (already
-  embedded in templates, campaigns and sent emails) start returning 403. Moving them under the prefix doesn't help,
-  since that changes their URLs. Only set it on a new install. `S3_PUBLIC_URL` must still point at the bucket root,
-  since the prefix is appended to it.
+  Setting `S3_PREFIX` on an instance that already has uploads breaks every image uploaded before it. The bucket policy
+  is replaced to only make objects under the prefix publicly readable, so files at the bucket root (already embedded in
+  templates, campaigns and sent emails) start returning 403. Moving them under the prefix doesn't help, since that
+  changes their URLs. Only set it on a new install. `S3_PUBLIC_URL` must still point at the bucket root, since the
+  prefix is appended to it.
 </Callout>
 
 ## Attachments
 
 Plunk supports attachments on transactional emails. AWS SES caps total message size at 40 MB; the defaults below leave headroom but can be tuned for your use case.
 
-| Variable                 | Required | Description                                                                                                              | Default |
-| ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------ | ------- |
-| `MAX_ATTACHMENT_SIZE_MB` | No       | Maximum total attachment size in megabytes per email. Hard upper bound enforced by AWS SES is 40 MB.                     | `10`    |
-| `MAX_ATTACHMENTS_COUNT`  | No       | Maximum number of attachments per email.                                                                                 | `10`    |
+| Variable                 | Required | Description                                                                                          | Default |
+| ------------------------ | -------- | ---------------------------------------------------------------------------------------------------- | ------- |
+| `MAX_ATTACHMENT_SIZE_MB` | No       | Maximum total attachment size in megabytes per email. Hard upper bound enforced by AWS SES is 40 MB. | `10`    |
+| `MAX_ATTACHMENTS_COUNT`  | No       | Maximum number of attachments per email.                                                             | `10`    |
 
 ## API Rate Limiting
 
@@ -81,15 +81,15 @@ Limits are keyed on the project rather than the IP address, so one customer's ru
 
 Rate limiting is **off by default** — upgrading Plunk will never start refusing traffic your callers were already sending. Set `RATE_LIMIT_ENABLED=true` to switch it on; none of the other variables have any effect until you do. Once enabled, set an individual `*_PER_SECOND` to `0` to disable a single bucket while leaving the others active.
 
-| Variable                        | Required | Description                                                                                             | Default |
-| ------------------------------- | -------- | --------------------------------------------------------------------------------------------------------- | ------- |
-| `RATE_LIMIT_ENABLED`            | No       | Master switch for all API rate limiting. Turn on when exposed to untrusted API clients.                 | `false` |
-| `RATE_LIMIT_TRACK_PER_SECOND`   | No       | Sustained requests per second for `POST /v1/track`, usually the highest-volume endpoint.                | `100`   |
-| `RATE_LIMIT_TRACK_BURST`        | No       | Burst ceiling for `POST /v1/track`.                                                                     | `200`   |
-| `RATE_LIMIT_SEND_PER_SECOND`    | No       | Sustained requests per second for `POST /v1/send`. Also bounded by the project's billing limit.         | `20`    |
-| `RATE_LIMIT_SEND_BURST`         | No       | Burst ceiling for `POST /v1/send`.                                                                      | `50`    |
-| `RATE_LIMIT_CONTACTS_PER_SECOND`| No       | Sustained requests per second across contact writes (`POST`, `PATCH`, `DELETE` on `/contacts`).         | `50`    |
-| `RATE_LIMIT_CONTACTS_BURST`     | No       | Burst ceiling shared by those contact writes.                                                           | `100`   |
+| Variable                         | Required | Description                                                                                     | Default |
+| -------------------------------- | -------- | ----------------------------------------------------------------------------------------------- | ------- |
+| `RATE_LIMIT_ENABLED`             | No       | Master switch for all API rate limiting. Turn on when exposed to untrusted API clients.         | `false` |
+| `RATE_LIMIT_TRACK_PER_SECOND`    | No       | Sustained requests per second for `POST /v1/track`, usually the highest-volume endpoint.        | `100`   |
+| `RATE_LIMIT_TRACK_BURST`         | No       | Burst ceiling for `POST /v1/track`.                                                             | `200`   |
+| `RATE_LIMIT_SEND_PER_SECOND`     | No       | Sustained requests per second for `POST /v1/send`. Also bounded by the project's billing limit. | `20`    |
+| `RATE_LIMIT_SEND_BURST`          | No       | Burst ceiling for `POST /v1/send`.                                                              | `50`    |
+| `RATE_LIMIT_CONTACTS_PER_SECOND` | No       | Sustained requests per second across contact writes (`POST`, `PATCH`, `DELETE` on `/contacts`). | `50`    |
+| `RATE_LIMIT_CONTACTS_BURST`      | No       | Burst ceiling shared by those contact writes.                                                   | `100`   |
 
 Contact writes share one budget because a sync integration drives create, update and delete from the same upstream change feed — separate budgets would let a single runaway sync spend three times the intended allowance.
 
@@ -97,8 +97,8 @@ Contact writes share one budget because a sync integration drives create, update
 
 Callers can pass an `Idempotency-Key` header to `POST /v1/track` and `POST /v1/send` to guarantee the request runs at most once. See [Idempotency](/guides/idempotency).
 
-| Variable                   | Required | Description                                                                                                                                                    | Default |
-| -------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| Variable                    | Required | Description                                                                                                                                                  | Default |
+| --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
 | `IDEMPOTENCY_KEY_TTL_HOURS` | No       | How long a used key stays claimed before it can be reused. Expired keys are swept hourly, so raising this grows the `idempotency_keys` table proportionally. | `24`    |
 
 ## SMTP Server
@@ -138,13 +138,14 @@ Required if you want to enable billing features. All Stripe variables must be se
 Checkout collects nothing upfront. Right after it completes, Plunk places a single charge of 2.00 (in the customer's billing currency) to confirm the card accepts off-session, merchant-initiated payments. This charge is created directly rather than from a price ID, so there's no variable for it. It's credited back to the customer's Stripe balance once verification succeeds. The same check runs whenever the customer changes their default card, which requires the `customer.updated` and `customer.subscription.updated` events on your Stripe webhook endpoint. See [Billing](/concepts/billing) for the customer-facing description.
 
 <Callout type="info">
-  `STRIPE_PRICE_ONBOARDING` has been removed. The separate one-time onboarding fee no longer exists, so you can delete the variable from your environment; it's ignored if still set.
+  `STRIPE_PRICE_ONBOARDING` has been removed. The separate one-time onboarding fee no longer exists, so you can delete
+  the variable from your environment; it's ignored if still set.
 </Callout>
 
 <Callout type="warn">
-  If you use a Stripe Radar rule to request 3D Secure, exclude off-session payments from it
-  (`and not :is_off_session:`). The verification charge runs with no cardholder present, so a 3DS request it
-  cannot satisfy will leave every verification unresolved.
+  If you use a Stripe Radar rule to request 3D Secure, exclude off-session payments from it (`and not
+  :is_off_session:`). The verification charge runs with no cardholder present, so a 3DS request it cannot satisfy will
+  leave every verification unresolved.
 </Callout>
 
 ## Platform Emails
@@ -174,35 +175,35 @@ Plunk bundles a self-hosted [ntfy](https://ntfy.sh) server for internal system n
 
 ## Interface
 
-| Variable       | Required | Description                                                                                                                                                      | Default |
-| -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
-| `SHOW_SPONSOR` | No       | When `true`, the dashboard navigation shows a **Sponsor** link to [GitHub Sponsors](https://github.com/sponsors/driaug). Set to `false` to hide it.               | `true`  |
+| Variable       | Required | Description                                                                                                                                         | Default |
+| -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `SHOW_SPONSOR` | No       | When `true`, the dashboard navigation shows a **Sponsor** link to [GitHub Sponsors](https://github.com/sponsors/driaug). Set to `false` to hide it. | `true`  |
 
 ## Security
 
-| Variable                      | Required | Description                                                                                                                                                | Default |
-| ----------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `AUTO_PROJECT_DISABLE`        | No       | When `true`, projects are automatically suspended when bounce or complaint rate thresholds are exceeded. Set to `false` to manage project status manually. | `true`  |
-| `EMAIL_RATE_LIMIT_PER_SECOND` | No       | Override the email sending rate limit. If not set, Plunk automatically fetches the quota from your AWS SES account.                                        | —       |
-| `EMAIL_WORKER_CONCURRENCY`    | No       | Number of emails the worker processes in parallel. When unset, derived from the effective rate limit so a higher SES quota scales throughput automatically. | —       |
-| `EMAIL_WORKER_MAX_CONCURRENCY`| No       | Upper bound applied to the auto-derived worker concurrency. Raise this only after sizing the Prisma connection pool accordingly.                            | `50`    |
+| Variable                       | Required | Description                                                                                                                                                 | Default |
+| ------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `AUTO_PROJECT_DISABLE`         | No       | When `true`, projects are automatically suspended when bounce or complaint rate thresholds are exceeded. Set to `false` to manage project status manually.  | `true`  |
+| `EMAIL_RATE_LIMIT_PER_SECOND`  | No       | Override the email sending rate limit. If not set, Plunk automatically fetches the quota from your AWS SES account.                                         | —       |
+| `EMAIL_WORKER_CONCURRENCY`     | No       | Number of emails the worker processes in parallel. When unset, derived from the effective rate limit so a higher SES quota scales throughput automatically. | —       |
+| `EMAIL_WORKER_MAX_CONCURRENCY` | No       | Upper bound applied to the auto-derived worker concurrency. Raise this only after sizing the Prisma connection pool accordingly.                            | `50`    |
 
 ## Advanced
 
 Variables for unusual deployments. The defaults work for the standard Docker Compose setup — only change these if you know you need to.
 
-| Variable     | Required | Description                                                                                                              | Default |
-| ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------ | ------- |
+| Variable     | Required | Description                                                                                                                                                                                | Default |
+| ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
 | `NGINX_PORT` | No       | Host port the bundled Nginx reverse proxy binds to. Override when port 80/443 is already in use on the host (e.g. running behind another reverse proxy that forwards to a different port). | `80`    |
 
 ## Signup Forms
 
 Signup forms served by `/forms/embed.js` can require a [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) token on every submission.
 
-| Variable                     | Required | Description                                                                                                                                                                  | Default |
-| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `FORM_CLIENT_IP_HEADER`      | No       | Request header with the visitor IP (e.g. `cf-connecting-ip`). Set it only when the proxy in front overwrites the header and the origin is reachable through that proxy alone. | —       |
-| `FORM_SUBMIT_LIMIT_PER_HOUR` | No       | Maximum form submissions per IP address per project per hour.                                                                                                                | `10`    |
+| Variable                     | Required | Description                                                                                                                                                                                                                              | Default                 |
+| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `FORM_TRUSTED_PROXY_HOPS`    | No       | Number of reverse proxies in front of the API that append to `X-Forwarded-For`; the visitor IP is the entry added by the outermost one. The bundled nginx counts as one, so use `2` behind Traefik/Coolify. `0` uses the socket address. | `1` (Docker), `0` (dev) |
+| `FORM_SUBMIT_LIMIT_PER_HOUR` | No       | Maximum form submissions per IP address per project per hour.                                                                                                                                                                            | `10`                    |
 
 Cloudflare Turnstile is configured per project on the **Forms** page of the dashboard.
 

@@ -1,6 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {FormSchemas} from '@plunk/shared';
 import {FormService, FORM_EVENTS, resolveLocale} from '../FormService';
+import {prisma as appPrisma} from '../../database/prisma';
 import {redis} from '../../database/redis';
 import {Keys} from '../keys';
 import {factories, getPrismaClient} from '../../../../../test/helpers';
@@ -201,6 +202,18 @@ describe('FormService', () => {
       const paused = await FormService.updateSettings(projectId, FormSchemas.settings.parse({turnstileEnabled: false}));
       expect(paused.hasTurnstileSecret).toBe(true);
       expect(await FormService.turnstileSiteKey(projectId)).toBeNull();
+    });
+
+    it('caches a disabled project so submissions skip the database', async () => {
+      expect(await FormService.turnstileSiteKey(projectId)).toBeNull();
+      expect(JSON.parse((await redis.get(Keys.Form.turnstile(projectId)))!)).toEqual({config: null});
+    });
+
+    it('keeps the secret out of regular project reads', async () => {
+      await enable();
+      const project = await appPrisma.project.findUnique({where: {id: projectId}});
+      expect(project?.id).toBe(projectId);
+      expect(Object.keys(project!)).not.toContain('turnstileSecret');
     });
 
     it('verifies tokens with the project secret, action and hostname', async () => {

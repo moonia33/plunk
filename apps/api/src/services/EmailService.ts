@@ -787,7 +787,7 @@ export class EmailService {
   }: {
     content: string;
     contact: Contact;
-    project: Project;
+    project: Omit<Project, 'turnstileSecret'>;
     includeUnsubscribe?: boolean;
     /**
      * Id of the email this footer is being rendered into, so an opt-out from the
