@@ -20,7 +20,9 @@ export const EMBED_SCRIPT = String.raw`(function () {
   var cfg = window.PlunkForms || {};
   var api = script && script.src ? new URL(script.src).origin : '';
   var key = cfg.key || (script && script.getAttribute('data-key'));
-  var locale = cfg.locale || (script && script.getAttribute('data-locale')) || (document.documentElement.lang || '').slice(0, 2) || undefined;
+  var pageLang = (document.documentElement.lang || '').split(/[-_]/);
+  var htmlLocale = pageLang[0] ? pageLang[0].toLowerCase() + (pageLang[1] ? '-' + pageLang[1].toUpperCase() : '') : undefined;
+  var locale = cfg.locale || (script && script.getAttribute('data-locale')) || htmlLocale;
   if (!key || !api) return;
 
   var DAY = 86400000;
