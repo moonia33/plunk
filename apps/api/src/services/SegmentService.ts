@@ -826,6 +826,8 @@ export class SegmentService {
       'notEquals',
       'contains',
       'notContains',
+      'arrayContains',
+      'arrayNotContains',
       'greaterThan',
       'lessThan',
       'greaterThanOrEqual',
@@ -861,6 +863,8 @@ export class SegmentService {
       'notEquals',
       'contains',
       'notContains',
+      'arrayContains',
+      'arrayNotContains',
       'greaterThan',
       'lessThan',
       'greaterThanOrEqual',
@@ -970,6 +974,16 @@ export class SegmentService {
         return {data: {path, string_contains: String(value)}};
       case 'notContains':
         return {NOT: {data: {path, string_contains: String(value)}}};
+      case 'arrayContains':
+        return {data: {path, array_contains: [value] as Prisma.InputJsonValue}};
+      case 'arrayNotContains':
+        // `@> []` holds for every array and no scalar, so only array fields can match
+        return {
+          AND: [
+            {data: {path, array_contains: [] as Prisma.InputJsonValue}},
+            {NOT: {data: {path, array_contains: [value] as Prisma.InputJsonValue}}},
+          ],
+        };
       case 'greaterThan':
         return {data: {path, gt: value as Prisma.InputJsonValue}};
       case 'lessThan':

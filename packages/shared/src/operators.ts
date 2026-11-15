@@ -19,6 +19,10 @@ export const OPERATORS = {
   CONTAINS: 'contains',
   NOT_CONTAINS: 'notContains',
 
+  // Array operators (JSON array fields, segments only)
+  ARRAY_CONTAINS: 'arrayContains',
+  ARRAY_NOT_CONTAINS: 'arrayNotContains',
+
   // Numeric operators
   GREATER_THAN: 'greaterThan',
   LESS_THAN: 'lessThan',
@@ -41,6 +45,8 @@ export const SEGMENT_OPERATORS = [
   OPERATORS.NOT_EQUALS,
   OPERATORS.CONTAINS,
   OPERATORS.NOT_CONTAINS,
+  OPERATORS.ARRAY_CONTAINS,
+  OPERATORS.ARRAY_NOT_CONTAINS,
   OPERATORS.GREATER_THAN,
   OPERATORS.LESS_THAN,
   OPERATORS.GREATER_THAN_OR_EQUAL,
@@ -128,6 +134,11 @@ export const WORKFLOW_CONDITION_OPERATORS = [
  *     - Matches when date field is within specified time period
  *     - Requires unit: 'days' | 'hours' | 'minutes'
  *     - Example: within 7 days = createdAt >= (now - 7 days)
+ *
+ * 12. ARRAY_CONTAINS / ARRAY_NOT_CONTAINS (JSON arrays - segments only)
+ *     - ONLY match when the field is an array: element equals the value (exact, case-sensitive)
+ *     - Example: data.purchasedBrands arrayContains "Korda" = data->'purchasedBrands' @> '["Korda"]'
+ *     - Do NOT match missing fields or non-array values
  */
 
 /**

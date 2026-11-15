@@ -11,6 +11,8 @@ export type SegmentFilterOperator =
   | 'notEquals'
   | 'contains'
   | 'notContains'
+  | 'arrayContains' // JSON array field includes the value
+  | 'arrayNotContains' // JSON array field does not include the value
   | 'greaterThan'
   | 'lessThan'
   | 'greaterThanOrEqual'

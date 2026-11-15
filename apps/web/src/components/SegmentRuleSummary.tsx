@@ -50,6 +50,10 @@ function describeFilter(filter: SegmentFilter, segmentNames: Map<string, string>
       return {field, op: 'contains', value: formatValue(filter.value)};
     case 'notContains':
       return {field, op: 'excludes', value: formatValue(filter.value)};
+    case 'arrayContains':
+      return {field, op: 'includes', value: formatValue(filter.value)};
+    case 'arrayNotContains':
+      return {field, op: 'not includes', value: formatValue(filter.value)};
     case 'greaterThan':
       return {field, op: '>', value: formatValue(filter.value)};
     case 'lessThan':

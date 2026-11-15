@@ -24,6 +24,8 @@ const STANDARD_OPERATORS: {value: SegmentFilterOperator; label: string; descript
   {value: 'notEquals', label: 'Not equals', description: 'Anything other than this value'},
   {value: 'contains', label: 'Contains', description: 'Value includes this text'},
   {value: 'notContains', label: 'Does not contain', description: 'Value does not include this text'},
+  {value: 'arrayContains', label: 'Includes', description: 'List has this item'},
+  {value: 'arrayNotContains', label: 'Does not include', description: 'List does not have this item'},
   {value: 'greaterThan', label: 'Greater than', description: 'Value is higher than'},
   {value: 'lessThan', label: 'Less than', description: 'Value is lower than'},
   {value: 'greaterThanOrEqual', label: 'Greater than or equal', description: 'Value is at least'},
@@ -65,7 +67,7 @@ interface FieldOption {
   value: string;
   label: string;
   description?: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'event' | 'email' | 'segment';
+  type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'event' | 'email' | 'segment';
   category: 'Contact fields' | 'Custom data' | 'Events' | 'Email activity' | 'Segments';
 }
 
@@ -179,6 +181,10 @@ const FilterRow = memo(function FilterRow({filter, onChange, onRemove, available
       return STANDARD_OPERATORS.filter(op => ['equals', 'notEquals', 'exists', 'notExists'].includes(op.value));
     }
 
+    if (type === 'array') {
+      return STANDARD_OPERATORS.filter(op => ['arrayContains', 'arrayNotContains', 'exists', 'notExists'].includes(op.value));
+    }
+
     if (type === 'number' || type === 'date') {
       return STANDARD_OPERATORS.filter(op =>
         [
@@ -228,6 +234,10 @@ const FilterRow = memo(function FilterRow({filter, onChange, onRemove, available
     // Filter operators based on field type
     if (fieldType === 'boolean') {
       return STANDARD_OPERATORS.filter(op => ['equals', 'notEquals', 'exists', 'notExists'].includes(op.value));
+    }
+
+    if (fieldType === 'array') {
+      return STANDARD_OPERATORS.filter(op => ['arrayContains', 'arrayNotContains', 'exists', 'notExists'].includes(op.value));
     }
 
     if (fieldType === 'number' || fieldType === 'date') {
@@ -296,7 +306,7 @@ const FilterRow = memo(function FilterRow({filter, onChange, onRemove, available
         const isOperatorValid = validOperators.some(op => op.value === filter.operator);
 
         if (!isOperatorValid) {
-          newOperator = 'equals';
+          newOperator = validOperators[0]?.value ?? 'equals';
         }
 
         // Reset value to appropriate default for new type

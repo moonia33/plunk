@@ -594,6 +594,32 @@ describe('SegmentService', () => {
       expect(notEqualsIds).not.toContain(acme.id);
     });
 
+    it('should support arrayContains and arrayNotContains for JSON array fields', async () => {
+      const carp = await factories.createContact({projectId, data: {activities: ['karpiavimas', 'spiningavimas']}});
+      const pike = await factories.createContact({projectId, data: {activities: ['spiningavimas']}});
+      const noList = await factories.createContact({projectId, data: {activities: 'karpiavimas'}});
+      const missing = await factories.createContact({projectId, data: {}});
+
+      const includes = await factories.createSegment(projectId, {
+        name: 'Carp anglers',
+        filters: [{field: 'data.activities', operator: 'arrayContains', value: 'karpiavimas'}],
+      });
+      const includesIds = (await SegmentService.getContacts(projectId, includes.id)).data.map(c => c.id);
+      expect(includesIds).toContain(carp.id);
+      expect(includesIds).not.toContain(pike.id);
+      expect(includesIds).not.toContain(noList.id);
+      expect(includesIds).not.toContain(missing.id);
+
+      const excludes = await factories.createSegment(projectId, {
+        name: 'Not carp anglers',
+        filters: [{field: 'data.activities', operator: 'arrayNotContains', value: 'karpiavimas'}],
+      });
+      const excludesIds = (await SegmentService.getContacts(projectId, excludes.id)).data.map(c => c.id);
+      expect(excludesIds).toContain(pike.id);
+      expect(excludesIds).not.toContain(carp.id);
+      expect(excludesIds).not.toContain(missing.id);
+    });
+
     it('should support exists and notExists for JSON data fields', async () => {
       const withCompany = await factories.createContact({
         projectId,

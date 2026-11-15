@@ -39,7 +39,7 @@ export const CONTACT_SUBSCRIPTION_STATUSES = ['subscribed', 'snoozed', 'unsubscr
 
 export type ContactSubscriptionStatus = (typeof CONTACT_SUBSCRIPTION_STATUSES)[number];
 
-export type ContactFieldType = 'string' | 'number' | 'boolean' | 'date';
+export type ContactFieldType = 'string' | 'number' | 'boolean' | 'date' | 'array';
 
 /**
  * A field the segment builder, workflow conditions and template editor can filter or
