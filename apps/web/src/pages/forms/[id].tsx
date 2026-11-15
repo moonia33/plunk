@@ -114,20 +114,22 @@ export default function FormEditorPage() {
   const id = typeof router.query.id === 'string' ? router.query.id : undefined;
   const {data: form, mutate} = useSWR<FormDefinition>(id ? `/forms/${id}` : null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [locale, setLocale] = useState('');
   const [newLocale, setNewLocale] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
-    if (form && !draft) {
+    if (form && draftId !== form.id) {
       const {name, type, status, doubleOptIn, content, fields, rules, style} = form;
       setDraft({name, type, status, doubleOptIn, content, fields, rules, style});
+      setDraftId(form.id);
       setLocale(Object.keys(content)[0] ?? 'en');
     }
-  }, [form, draft]);
+  }, [form, draftId]);
 
-  if (!form || !draft) {
+  if (!form || !draft || draftId !== form.id) {
     return (
       <DashboardLayout>
         <div className="flex justify-center py-24">
