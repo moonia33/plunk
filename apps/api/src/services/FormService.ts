@@ -214,10 +214,11 @@ export class FormService {
       .map(([id, value]) => [id, Number(value)] as const)
       .filter(([, value]) => value > 0);
 
-    for (const [id, value] of entries) {
-      // updateMany: the form may have been deleted since the view was counted.
-      await prisma.form.updateMany({where: {id}, data: {views: {increment: value}}});
-    }
+    // One transaction: a failed run commits nothing, so the retry cannot count a view twice.
+    // updateMany: the form may have been deleted since the view was counted.
+    await prisma.$transaction(
+      entries.map(([id, value]) => prisma.form.updateMany({where: {id}, data: {views: {increment: value}}})),
+    );
     await redis.del(processing);
     return entries.length;
   }
