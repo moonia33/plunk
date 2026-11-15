@@ -21,7 +21,9 @@ export const EMBED_SCRIPT = String.raw`(function () {
   var api = script && script.src ? new URL(script.src).origin : '';
   var key = cfg.key || (script && script.getAttribute('data-key'));
   var pageLang = (document.documentElement.lang || '').split(/[-_]/);
-  var htmlLocale = pageLang[0] ? pageLang[0].toLowerCase() + (pageLang[1] ? '-' + pageLang[1].toUpperCase() : '') : undefined;
+  var language = /^[a-z]{2}$/i.test(pageLang[0]) ? pageLang[0].toLowerCase() : undefined;
+  var region = /^[a-z]{2}$/i.test(pageLang[1] || '') ? '-' + pageLang[1].toUpperCase() : '';
+  var htmlLocale = language && language + region;
   var locale = cfg.locale || (script && script.getAttribute('data-locale')) || htmlLocale;
   if (!key || !api) return;
 
