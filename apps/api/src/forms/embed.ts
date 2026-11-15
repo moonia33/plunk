@@ -249,6 +249,10 @@ export const EMBED_SCRIPT = String.raw`(function () {
       var save = el('button', 'pf-button', c.step2Button || c.button);
       save.type = 'submit';
       second.appendChild(save);
+      var stepError = el('p', 'pf-error');
+      stepError.setAttribute('role', 'alert');
+      stepError.hidden = true;
+      second.appendChild(stepError);
       second.onsubmit = function (event) {
         event.preventDefault();
         var fields = {};
@@ -259,9 +263,14 @@ export const EMBED_SCRIPT = String.raw`(function () {
           );
         });
         save.disabled = true;
+        stepError.hidden = true;
         post('/forms/public/' + form.id + '/fields', {key: key, token: token, fields: fields})
-          .catch(function () {})
-          .then(function () { second.remove(); done(); });
+          .then(function () { second.remove(); done(); })
+          .catch(function (err) {
+            save.disabled = false;
+            stepError.textContent = err.message;
+            stepError.hidden = false;
+          });
       };
       card.appendChild(second);
     }
