@@ -26,6 +26,14 @@ export const EMBED_SCRIPT = String.raw`(function () {
   if (!key || !api) return;
 
   var DAY = 86400000;
+  var INVALID_EMAIL = {
+    lt: 'Įveskite teisingą el. pašto adresą.',
+    lv: 'Ievadiet derīgu e-pasta adresi.',
+    et: 'Sisestage kehtiv e-posti aadress.',
+    pl: 'Podaj poprawny adres e-mail.',
+    de: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+    en: 'Enter a valid email address.',
+  };
   function get(store, name) { try { return window[store].getItem('plunk_' + name); } catch (e) { return null; } }
   function set(store, name, value) { try { window[store].setItem('plunk_' + name, String(value)); } catch (e) {} }
 
@@ -282,7 +290,7 @@ export const EMBED_SCRIPT = String.raw`(function () {
       error.hidden = true;
       var value = email.value.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        error.textContent = c.emailPlaceholder || 'Email';
+        error.textContent = INVALID_EMAIL[(locale || 'en').split('-')[0]] || INVALID_EMAIL.en;
         error.hidden = false;
         email.focus();
         return;
