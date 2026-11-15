@@ -9,6 +9,7 @@ import {toast} from 'sonner';
 import useSWR from 'swr';
 
 import {DashboardLayout} from '../../components/DashboardLayout';
+import {TurnstileSettings} from '../../components/forms/TurnstileSettings';
 import {conversionRate, FORM_STATUS_VARIANTS, FORM_TYPE_LABELS} from '../../lib/forms';
 import {network} from '../../lib/network';
 
@@ -102,6 +103,8 @@ export default function FormsPage() {
               )}
             </CardContent>
           </Card>
+
+          <TurnstileSettings />
         </div>
       </DashboardLayout>
     </>

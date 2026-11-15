@@ -199,12 +199,12 @@ Variables for unusual deployments. The defaults work for the standard Docker Com
 
 Signup forms served by `/forms/embed.js` can require a [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) token on every submission.
 
-| Variable                     | Required | Description                                                                                                                        | Default |
-| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `TURNSTILE_SECRET`           | No       | Turnstile secret key. When set, submissions must carry a token for action `newsletter_signup`; verification failures are rejected. | —       |
-| `TURNSTILE_SITE_KEY`         | No       | Turnstile site key handed to the embed script. Set together with `TURNSTILE_SECRET`.                                               | —       |
-| `TURNSTILE_HOSTNAMES`        | No       | Comma-separated shop hostnames a token may be issued on. Do not include `localhost` in production.                                 | —       |
-| `FORM_SUBMIT_LIMIT_PER_HOUR` | No       | Maximum form submissions per IP address per project per hour.                                                                      | `10`    |
+| Variable                     | Required | Description                                                                                                                                                                  | Default |
+| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `FORM_CLIENT_IP_HEADER`      | No       | Request header with the visitor IP (e.g. `cf-connecting-ip`). Set it only when the proxy in front overwrites the header and the origin is reachable through that proxy alone. | —       |
+| `FORM_SUBMIT_LIMIT_PER_HOUR` | No       | Maximum form submissions per IP address per project per hour.                                                                                                                | `10`    |
+
+Cloudflare Turnstile is configured per project on the **Forms** page of the dashboard.
 
 ## Phishing Detection
 

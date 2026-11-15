@@ -2,7 +2,7 @@ import {Controller, Delete, Get, Middleware, Patch, Post} from '@overnightjs/cor
 import {FormSchemas} from '@plunk/shared';
 import type {NextFunction, Request, Response} from 'express';
 
-import {TURNSTILE_SITE_KEY} from '../app/constants.js';
+import {FORM_CLIENT_IP_HEADER} from '../app/constants.js';
 import {HttpException} from '../exceptions/index.js';
 import {EMBED_SCRIPT} from '../forms/embed.js';
 import {requireAuth, requireEmailVerified} from '../middleware/auth.js';
@@ -10,13 +10,14 @@ import {FormService, TURNSTILE_ACTION} from '../services/FormService.js';
 import {ProjectService} from '../services/ProjectService.js';
 import {CatchAsync} from '../utils/asyncHandler.js';
 
-/** Client IP behind Cloudflare and the reverse proxy. */
+/** Visitor IP. Headers are client-controlled, so only the one a trusted proxy overwrites is read. */
 function clientIp(req: Request): string {
-  const cf = req.headers['cf-connecting-ip'];
-  if (typeof cf === 'string' && cf) return cf;
-  const forwarded = req.headers['x-forwarded-for'];
-  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim();
-  return first || req.ip || req.socket.remoteAddress || 'unknown';
+  if (FORM_CLIENT_IP_HEADER) {
+    const value = req.headers[FORM_CLIENT_IP_HEADER];
+    const first = (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return req.socket.remoteAddress || 'unknown';
 }
 
 /** Public endpoints are called from shop pages with the project's public (pk_) key. */
@@ -51,12 +52,12 @@ export class Forms {
   public async config(req: Request, res: Response, _next: NextFunction) {
     const {key, locale} = FormSchemas.publicConfig.parse(req.query);
     const projectId = await projectFromPublicKey(key);
-    const forms = await FormService.publicConfig(projectId, locale);
+    const [forms, siteKey] = await Promise.all([
+      FormService.publicConfig(projectId, locale),
+      FormService.turnstileSiteKey(projectId),
+    ]);
     res.set('Cache-Control', 'public, max-age=60');
-    return res.status(200).json({
-      forms,
-      turnstile: TURNSTILE_SITE_KEY ? {siteKey: TURNSTILE_SITE_KEY, action: TURNSTILE_ACTION} : null,
-    });
+    return res.status(200).json({forms, turnstile: siteKey ? {siteKey, action: TURNSTILE_ACTION} : null});
   }
 
   /** POST /forms/public/:id/view — sent with sendBeacon when a form is shown. */
@@ -87,6 +88,25 @@ export class Forms {
     const projectId = await projectFromPublicKey(input.key);
     const result = await FormService.submitFields(projectId, String(req.params.id), input);
     return res.status(200).json(result);
+  }
+
+  /** GET /forms/settings — project-wide form settings (Turnstile). The secret is never returned. */
+  @Get('settings')
+  @Middleware([requireAuth, requireEmailVerified])
+  @CatchAsync
+  public async settings(_req: Request, res: Response, _next: NextFunction) {
+    const auth = res.locals.auth;
+    return res.status(200).json(await FormService.settings(auth.projectId!));
+  }
+
+  /** PATCH /forms/settings */
+  @Patch('settings')
+  @Middleware([requireAuth, requireEmailVerified])
+  @CatchAsync
+  public async updateSettings(req: Request, res: Response, _next: NextFunction) {
+    const auth = res.locals.auth;
+    const input = FormSchemas.settings.parse(req.body);
+    return res.status(200).json(await FormService.updateSettings(auth.projectId!, input));
   }
 
   /** GET /forms */

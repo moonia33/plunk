@@ -51,7 +51,7 @@ Every signup event carries `event.form` with the form ID, consent text and versi
 
 The optional second step shows checkbox questions (for example *Which fishing do you do?*). The selected option values are stored on the contact as arrays, e.g. `interests: ["karpine", "feeder"]`, and can be used in segments with **Includes**.
 
-Protection: a honeypot field, a per-IP limit (`FORM_SUBMIT_LIMIT_PER_HOUR`) and optional [Cloudflare Turnstile](/self-hosting/environment-variables#signup-forms).
+Protection: a honeypot field, a per-IP limit (`FORM_SUBMIT_LIMIT_PER_HOUR`, see [signup forms variables](/self-hosting/environment-variables#signup-forms)) and optional Cloudflare Turnstile. Turnstile is set per project under **Forms → Bot protection**: site key, secret key and the hostnames tokens may come from. Switch it off while testing on hosts outside that list.
 
 ## Stats
 

@@ -2,11 +2,19 @@ import {randomBytes} from 'node:crypto';
 
 import type {Form, Prisma} from '@plunk/db';
 import {FormSchemas} from '@plunk/shared';
-import type {FormContent, FormDefinition, FormField, FormRules, FormStyle, PublicForm} from '@plunk/types';
+import type {
+  FormContent,
+  FormDefinition,
+  FormField,
+  FormRules,
+  FormSettings,
+  FormStyle,
+  PublicForm,
+} from '@plunk/types';
 import signale from 'signale';
 import type {z} from 'zod';
 
-import {FORM_SUBMIT_LIMIT_PER_HOUR, TURNSTILE_HOSTNAMES, TURNSTILE_SECRET} from '../app/constants.js';
+import {FORM_SUBMIT_LIMIT_PER_HOUR} from '../app/constants.js';
 import {prisma} from '../database/prisma.js';
 import {redis, wrapRedis} from '../database/redis.js';
 import {HttpException, NotFound, RateLimitError} from '../exceptions/index.js';
@@ -245,7 +253,7 @@ export class FormService {
     }
 
     await this.checkSubmitLimit(projectId, ip);
-    await this.verifyTurnstile(input.turnstileToken, ip);
+    await this.verifyTurnstile(projectId, input.turnstileToken, ip);
 
     const email = ContactService.normalizeEmail(input.email);
     const existing = await prisma.contact.findUnique({
@@ -378,9 +386,82 @@ export class FormService {
     }
   }
 
-  /** Canonical Turnstile siteverify. Fails closed. A no-op when TURNSTILE_SECRET is not set. */
-  private static async verifyTurnstile(token: string | undefined, ip: string): Promise<void> {
-    if (!TURNSTILE_SECRET) {
+  public static async settings(projectId: string): Promise<FormSettings> {
+    const project = await prisma.project.findUnique({
+      where: {id: projectId},
+      select: {turnstileEnabled: true, turnstileSiteKey: true, turnstileSecret: true, turnstileHostnames: true},
+    });
+    if (!project) {
+      throw new NotFound('Project', projectId);
+    }
+    return {
+      turnstileEnabled: project.turnstileEnabled,
+      turnstileSiteKey: project.turnstileSiteKey,
+      turnstileHostnames: project.turnstileHostnames,
+      hasTurnstileSecret: Boolean(project.turnstileSecret),
+    };
+  }
+
+  public static async updateSettings(
+    projectId: string,
+    input: z.infer<typeof FormSchemas.settings>,
+  ): Promise<FormSettings> {
+    const current = await this.settings(projectId);
+    const next = {
+      turnstileEnabled: input.turnstileEnabled ?? current.turnstileEnabled,
+      turnstileSiteKey: input.turnstileSiteKey !== undefined ? input.turnstileSiteKey : current.turnstileSiteKey,
+      turnstileHostnames: input.turnstileHostnames ?? current.turnstileHostnames,
+      hasSecret: input.turnstileSecret !== undefined ? Boolean(input.turnstileSecret) : current.hasTurnstileSecret,
+    };
+    if (next.turnstileEnabled && (!next.turnstileSiteKey || !next.hasSecret || !next.turnstileHostnames.length)) {
+      throw new HttpException(400, 'Turnstile needs a site key, a secret key and at least one hostname');
+    }
+
+    await prisma.project.update({
+      where: {id: projectId},
+      data: {
+        turnstileEnabled: next.turnstileEnabled,
+        turnstileSiteKey: next.turnstileSiteKey,
+        turnstileHostnames: next.turnstileHostnames,
+        ...(input.turnstileSecret !== undefined ? {turnstileSecret: input.turnstileSecret || null} : {}),
+      },
+    });
+    await redis.del(Keys.Form.turnstile(projectId));
+    return this.settings(projectId);
+  }
+
+  /** Site key for the embed script, or null when the project does not use Turnstile. */
+  public static async turnstileSiteKey(projectId: string): Promise<string | null> {
+    return (await this.turnstile(projectId))?.siteKey ?? null;
+  }
+
+  private static async turnstile(
+    projectId: string,
+  ): Promise<{siteKey: string; secret: string; hostnames: string[]} | null> {
+    return wrapRedis(
+      Keys.Form.turnstile(projectId),
+      async () => {
+        const project = await prisma.project.findUnique({
+          where: {id: projectId},
+          select: {turnstileEnabled: true, turnstileSiteKey: true, turnstileSecret: true, turnstileHostnames: true},
+        });
+        if (!project?.turnstileEnabled || !project.turnstileSiteKey || !project.turnstileSecret) {
+          return null;
+        }
+        return {
+          siteKey: project.turnstileSiteKey,
+          secret: project.turnstileSecret,
+          hostnames: project.turnstileHostnames,
+        };
+      },
+      ACTIVE_CACHE_SECONDS,
+    );
+  }
+
+  /** Canonical Turnstile siteverify. Fails closed. A no-op when the project has Turnstile off. */
+  private static async verifyTurnstile(projectId: string, token: string | undefined, ip: string): Promise<void> {
+    const turnstile = await this.turnstile(projectId);
+    if (!turnstile) {
       return;
     }
     if (!token) {
@@ -392,7 +473,7 @@ export class FormService {
       const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({secret: TURNSTILE_SECRET, response: token, remoteip: ip}),
+        body: JSON.stringify({secret: turnstile.secret, response: token, remoteip: ip}),
         signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) throw new Error(`siteverify ${response.status}`);
@@ -406,7 +487,7 @@ export class FormService {
       result.success !== true ||
       result.action !== TURNSTILE_ACTION ||
       !result.hostname ||
-      !TURNSTILE_HOSTNAMES.includes(result.hostname.toLowerCase())
+      !turnstile.hostnames.includes(result.hostname.toLowerCase())
     ) {
       throw new HttpException(400, 'Verification failed');
     }

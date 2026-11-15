@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {FormSchemas} from '@plunk/shared';
 import {FormService, FORM_EVENTS, resolveLocale} from '../FormService';
 import {redis} from '../../database/redis';
@@ -126,7 +126,11 @@ describe('FormService', () => {
     await FormService.submitFields(
       projectId,
       form.id,
-      FormSchemas.publicFields.parse({key: 'pk', token: step2Token, fields: {interests: ['karpine', 'hacked'], other: ['x']}}),
+      FormSchemas.publicFields.parse({
+        key: 'pk',
+        token: step2Token,
+        fields: {interests: ['karpine', 'hacked'], other: ['x']},
+      }),
     );
 
     const contact = await prisma.contact.findFirstOrThrow({where: {projectId, email: 'fan@example.com'}});
@@ -135,7 +139,11 @@ describe('FormService', () => {
 
     // The token is single-use.
     await expect(
-      FormService.submitFields(projectId, form.id, FormSchemas.publicFields.parse({key: 'pk', token: step2Token, fields: {}})),
+      FormService.submitFields(
+        projectId,
+        form.id,
+        FormSchemas.publicFields.parse({key: 'pk', token: step2Token, fields: {}}),
+      ),
     ).rejects.toThrow();
   });
 
@@ -161,5 +169,65 @@ describe('FormService', () => {
     expect((await prisma.form.findUniqueOrThrow({where: {id: form.id}})).views).toBe(2);
     expect(await redis.hget(Keys.Form.views(), form.id)).toBeNull();
     expect((await FormService.get(projectId, form.id)).views).toBe(2);
+  });
+
+  describe('Turnstile settings', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    const enable = () =>
+      FormService.updateSettings(
+        projectId,
+        FormSchemas.settings.parse({
+          turnstileEnabled: true,
+          turnstileSiteKey: '0x4AAAAAAAsite',
+          turnstileSecret: '0x4AAAAAAAsecret',
+          turnstileHostnames: ['Shop.Example.com'],
+        }),
+      );
+
+    it('requires keys and hostnames to enable and never returns the secret', async () => {
+      await expect(
+        FormService.updateSettings(projectId, FormSchemas.settings.parse({turnstileEnabled: true})),
+      ).rejects.toThrow();
+      const settings = await enable();
+      expect(settings).toEqual({
+        turnstileEnabled: true,
+        turnstileSiteKey: '0x4AAAAAAAsite',
+        turnstileHostnames: ['shop.example.com'],
+        hasTurnstileSecret: true,
+      });
+      expect(await FormService.turnstileSiteKey(projectId)).toBe('0x4AAAAAAAsite');
+
+      const paused = await FormService.updateSettings(projectId, FormSchemas.settings.parse({turnstileEnabled: false}));
+      expect(paused.hasTurnstileSecret).toBe(true);
+      expect(await FormService.turnstileSiteKey(projectId)).toBeNull();
+    });
+
+    it('verifies tokens with the project secret, action and hostname', async () => {
+      const form = await FormService.create(projectId, input());
+      await enable();
+      const siteverify = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({success: true, action: 'newsletter_signup', hostname: 'shop.example.com'}),
+      });
+      vi.stubGlobal('fetch', siteverify);
+
+      await expect(submit(form.id, 'no-token@example.com')).rejects.toThrow('Verification is required');
+      await expect(submit(form.id, 'human@example.com', {turnstileToken: 'token'})).resolves.toMatchObject({
+        success: true,
+      });
+      expect(JSON.parse(siteverify.mock.calls[0][1].body)).toMatchObject({
+        secret: '0x4AAAAAAAsecret',
+        response: 'token',
+      });
+
+      siteverify.mockResolvedValue({
+        ok: true,
+        json: async () => ({success: true, action: 'newsletter_signup', hostname: 'other.example.com'}),
+      });
+      await expect(submit(form.id, 'elsewhere@example.com', {turnstileToken: 'token'})).rejects.toThrow(
+        'Verification failed',
+      );
+    });
   });
 });

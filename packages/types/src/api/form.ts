@@ -69,6 +69,14 @@ export interface FormDefinition {
   updatedAt: string;
 }
 
+/** Project-wide form settings. The Turnstile secret is write-only. */
+export interface FormSettings {
+  turnstileEnabled: boolean;
+  turnstileSiteKey: string | null;
+  turnstileHostnames: string[];
+  hasTurnstileSecret: boolean;
+}
+
 /** A form as the embed script receives it: texts resolved to one locale. */
 export interface PublicForm {
   id: string;

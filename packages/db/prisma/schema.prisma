@@ -73,6 +73,12 @@ model Project {
   // Localization
   language String @default("en") // Language code for customer-facing content (ISO 639-1)
 
+  // Signup forms: Cloudflare Turnstile widget covering this project's sites
+  turnstileEnabled   Boolean  @default(false)
+  turnstileSiteKey   String?
+  turnstileSecret    String?
+  turnstileHostnames String[] @default([])
+
   // Relations
   members     Membership[]
   contacts    Contact[]

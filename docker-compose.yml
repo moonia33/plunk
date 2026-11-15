@@ -195,9 +195,7 @@ services:
       AUTO_PROJECT_DISABLE: ${AUTO_PROJECT_DISABLE:-false}
 
       # Signup forms
-      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
-      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
-      TURNSTILE_HOSTNAMES: ${TURNSTILE_HOSTNAMES:-}
+      FORM_CLIENT_IP_HEADER: ${FORM_CLIENT_IP_HEADER:-}
       FORM_SUBMIT_LIMIT_PER_HOUR: ${FORM_SUBMIT_LIMIT_PER_HOUR:-10}
 
       # Self-hosting user management (documented in .env.self-host.example

@@ -516,23 +516,21 @@ export const CampaignSchemas = {
   }),
 } as const;
 
-const throttleWindow = z
-  .string()
-  .transform((value, ctx) => {
-    const seconds = parseDuration(value);
+const throttleWindow = z.string().transform((value, ctx) => {
+  const seconds = parseDuration(value);
 
-    if (seconds === null) {
-      ctx.addIssue({code: z.ZodIssueCode.custom, message: 'Use a duration like "30m", "24h" or "7d"'});
-      return z.NEVER;
-    }
+  if (seconds === null) {
+    ctx.addIssue({code: z.ZodIssueCode.custom, message: 'Use a duration like "30m", "24h" or "7d"'});
+    return z.NEVER;
+  }
 
-    if (seconds < MIN_THROTTLE_WINDOW_SECONDS || seconds > MAX_THROTTLE_WINDOW_SECONDS) {
-      ctx.addIssue({code: z.ZodIssueCode.custom, message: 'The throttle window must be between 1 minute and 365 days'});
-      return z.NEVER;
-    }
+  if (seconds < MIN_THROTTLE_WINDOW_SECONDS || seconds > MAX_THROTTLE_WINDOW_SECONDS) {
+    ctx.addIssue({code: z.ZodIssueCode.custom, message: 'The throttle window must be between 1 minute and 365 days'});
+    return z.NEVER;
+  }
 
-    return seconds;
-  });
+  return seconds;
+});
 
 /**
  * `delivery.at`: an ISO 8601 date with a timezone, at most MAX_SCHEDULE_DAYS ahead. Parses to
@@ -654,7 +652,12 @@ export const ActionSchemas = {
           ]),
         ),
       ]),
-      subject: z.string().min(1).max(998).regex(/^[^\r\n]*$/, 'Subject contains invalid characters').optional(),
+      subject: z
+        .string()
+        .min(1)
+        .max(998)
+        .regex(/^[^\r\n]*$/, 'Subject contains invalid characters')
+        .optional(),
       body: z.string().min(1).optional(),
       template: uuid.optional(),
       subscribed: z.boolean().optional(),
@@ -665,7 +668,10 @@ export const ActionSchemas = {
             email, // Simple email string (backward compatible)
             z.object({
               // Object with name and email
-              name: z.string().regex(/^[^\r\n]*$/, 'Name contains invalid characters').optional(),
+              name: z
+                .string()
+                .regex(/^[^\r\n]*$/, 'Name contains invalid characters')
+                .optional(),
               email: email,
             }),
           ],
@@ -686,29 +692,37 @@ export const ActionSchemas = {
       headers: z
         .record(
           z.string().regex(/^[^\r\n]+$/, 'Header key contains invalid characters'),
-          z.string().max(998).regex(/^[^\r\n]*$/, 'Header value contains invalid characters'),
+          z
+            .string()
+            .max(998)
+            .regex(/^[^\r\n]*$/, 'Header value contains invalid characters'),
         )
         .optional(),
       data: jsonSchema.optional(),
       attachments: z
         .array(
-          z.object({
-            filename: z.string().min(1).max(255).regex(/^[^\r\n"]+$/, 'Filename contains invalid characters'),
-            content: z.string().min(1), // Base64 encoded file content
-            // Goes verbatim into the part's Content-Type header, so a line break would inject headers
-            contentType: z
-              .string()
-              .min(1)
-              .max(255)
-              .regex(/^[^\x00-\x1f\x7f]+$/, 'Content type contains invalid characters'),
-            contentId: z
-              .string()
-              .min(1)
-              .max(255)
-              .regex(/^[^<>\r\n]+$/, 'Content ID cannot contain <, >, \\r, or \\n')
-              .optional(),
-            disposition: z.enum(['attachment', 'inline']).default('attachment'),
-          })
+          z
+            .object({
+              filename: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[^\r\n"]+$/, 'Filename contains invalid characters'),
+              content: z.string().min(1), // Base64 encoded file content
+              // Goes verbatim into the part's Content-Type header, so a line break would inject headers
+              contentType: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[^\x00-\x1f\x7f]+$/, 'Content type contains invalid characters'),
+              contentId: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[^<>\r\n]+$/, 'Content ID cannot contain <, >, \\r, or \\n')
+                .optional(),
+              disposition: z.enum(['attachment', 'inline']).default('attachment'),
+            })
             .refine(data => data.disposition !== 'inline' || !!data.contentId, {
               message: 'Content ID is required when disposition is inline',
               path: ['contentId'],
@@ -854,7 +868,12 @@ export const CatalogSchemas = {
     ids: z
       .string()
       .max(4000)
-      .transform(value => value.split(',').map(id => id.trim()).filter(Boolean))
+      .transform(value =>
+        value
+          .split(',')
+          .map(id => id.trim())
+          .filter(Boolean),
+      )
       .pipe(z.array(z.string().max(191)).min(1).max(100)),
     locale: catalogLocale.optional(),
   }),
@@ -956,7 +975,10 @@ const formBody = z.object({
   fields: z
     .array(formField)
     .max(3)
-    .refine(fields => new Set(fields.map(field => field.key)).size === fields.length, 'Each question needs its own contact field')
+    .refine(
+      fields => new Set(fields.map(field => field.key)).size === fields.length,
+      'Each question needs its own contact field',
+    )
     .default([]),
   rules: formRules.default({}),
   style: formStyle.default({}),
@@ -985,6 +1007,22 @@ export const FormSchemas = {
     /** Honeypot: hidden input that people leave empty. */
     website: z.string().max(500).optional(),
     turnstileToken: z.string().max(4096).optional(),
+  }),
+  settings: z.object({
+    turnstileEnabled: z.boolean().optional(),
+    turnstileSiteKey: z.string().trim().max(100).nullable().optional(),
+    // Empty string clears the stored secret; omit it to keep the current one.
+    turnstileSecret: z.string().trim().max(200).optional(),
+    turnstileHostnames: z
+      .array(
+        z
+          .string()
+          .trim()
+          .toLowerCase()
+          .regex(/^(?=.{1,253}$)([a-z0-9-]+\.)*[a-z0-9-]+$/, 'Enter a hostname such as shop.example.com'),
+      )
+      .max(20)
+      .optional(),
   }),
   publicFields: z.object({
     key: z.string().min(1).max(191),
