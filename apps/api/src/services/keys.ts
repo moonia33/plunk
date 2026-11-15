@@ -6,7 +6,7 @@ export const Keys = {
     },
     /** Turnstile widget settings of a project, including its secret. */
     turnstile(projectId: string): string {
-      return `form:turnstile:${projectId}`;
+      return `form:turnstile:v2:${projectId}`;
     },
     /** Hash of buffered view counts, field = form id. Flushed to the database by a job. */
     views(): string {

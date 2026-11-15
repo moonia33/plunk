@@ -204,6 +204,11 @@ describe('FormService', () => {
       expect(await FormService.turnstileSiteKey(projectId)).toBeNull();
     });
 
+    it('caches a disabled project so submissions skip the database', async () => {
+      expect(await FormService.turnstileSiteKey(projectId)).toBeNull();
+      expect(JSON.parse((await redis.get(Keys.Form.turnstile(projectId)))!)).toEqual({config: null});
+    });
+
     it('keeps the secret out of regular project reads', async () => {
       await enable();
       const project = await appPrisma.project.findUnique({where: {id: projectId}});
