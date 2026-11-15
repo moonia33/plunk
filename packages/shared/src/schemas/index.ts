@@ -865,3 +865,107 @@ export const CatalogSchemas = {
     parentId: z.string().trim().min(1).max(191).optional(),
   }),
 } as const;
+
+const formLocale = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/, 'Use an ISO 639-1 code, e.g. lt or en-GB');
+const formText = (max: number) => z.string().trim().max(max);
+const formLocalized = (max: number) =>
+  z.record(formLocale, formText(max)).refine(value => Object.keys(value).length <= 20, 'At most 20 locales');
+const formColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #rrggbb color');
+
+const formContent = z.object({
+  title: formText(200).min(1),
+  body: formText(1000).optional(),
+  emailPlaceholder: formText(100).optional(),
+  button: formText(60).min(1),
+  consentText: formText(1000).optional(),
+  successTitle: formText(200).optional(),
+  successBody: formText(1000).optional(),
+  step2Title: formText(200).optional(),
+  step2Button: formText(60).optional(),
+  barText: formText(200).optional(),
+});
+
+const formField = z.object({
+  key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/, 'Letters, digits and _ only, starting with a letter'),
+  label: formLocalized(200),
+  options: z
+    .array(
+      z.object({
+        value: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/, 'Lowercase slug, e.g. karpine'),
+        label: formLocalized(100),
+      }),
+    )
+    .min(1)
+    .max(30),
+});
+
+const formRules = z.object({
+  trigger: z.enum(['immediate', 'delay', 'scroll', 'exit']).default('delay'),
+  delaySeconds: z.number().int().min(0).max(600).default(8),
+  scrollPercent: z.number().int().min(0).max(100).default(50),
+  minPageviews: z.number().int().min(1).max(50).default(1),
+  urlInclude: z.array(z.string().trim().min(1).max(300)).max(50).default([]),
+  urlExclude: z.array(z.string().trim().min(1).max(300)).max(50).default([]),
+  locales: z.array(formLocale).max(20).default([]),
+  hideForSubscribers: z.boolean().default(true),
+  hideForCustomers: z.boolean().default(false),
+  dismissDays: z.number().int().min(0).max(365).default(14),
+  mobile: z.enum(['same', 'slide_in', 'hide']).default('slide_in'),
+});
+
+const formStyle = z.object({
+  accent: formColor.optional(),
+  background: formColor.optional(),
+  text: formColor.optional(),
+  imageUrl: z
+    .string()
+    .max(2048)
+    .url()
+    .refine(value => /^https:\/\//i.test(value), 'Must be an https URL')
+    .optional(),
+  position: z.enum(['bottom-right', 'bottom-left', 'top', 'bottom']).optional(),
+});
+
+const formBody = z.object({
+  name: z.string().trim().min(1).max(191),
+  type: z.enum(['INLINE', 'POPUP', 'SLIDE_IN', 'BAR', 'PAGE']),
+  status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED']).default('DRAFT'),
+  content: z
+    .record(formLocale, formContent)
+    .refine(value => Object.keys(value).length >= 1, 'Add texts for at least one locale')
+    .refine(value => Object.keys(value).length <= 20, 'At most 20 locales'),
+  fields: z.array(formField).max(3).default([]),
+  rules: formRules.default({}),
+  style: formStyle.default({}),
+  doubleOptIn: z.boolean().default(true),
+});
+
+export const FormSchemas = {
+  content: formContent,
+  field: formField,
+  rules: formRules,
+  style: formStyle,
+  create: formBody,
+  update: formBody.partial(),
+  publicConfig: z.object({
+    key: z.string().min(1).max(191),
+    locale: formLocale.optional(),
+  }),
+  publicView: z.object({
+    key: z.string().min(1).max(191),
+  }),
+  publicSubmit: z.object({
+    key: z.string().min(1).max(191),
+    email: z.string().trim().toLowerCase().email().max(254),
+    locale: formLocale.optional(),
+    url: z.string().max(2048).optional(),
+    /** Honeypot: hidden input that people leave empty. */
+    website: z.string().max(500).optional(),
+    turnstileToken: z.string().max(4096).optional(),
+  }),
+  publicFields: z.object({
+    key: z.string().min(1).max(191),
+    token: z.string().min(16).max(128),
+    fields: z.record(z.string().max(64), z.array(z.string().max(64)).max(30)),
+  }),
+};

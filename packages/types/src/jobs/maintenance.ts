@@ -71,3 +71,11 @@ export interface ScheduledEmailSweepJobData {
 export interface ContactFieldsJobData {
   projectId: string;
 }
+
+/**
+ * Form stats flush job data
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface FormStatsFlushJobData {
+  // Empty - moves every buffered form view counter from Redis to the database
+}

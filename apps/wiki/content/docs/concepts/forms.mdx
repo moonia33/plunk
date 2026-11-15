@@ -1,0 +1,58 @@
+---
+title: Signup forms
+description: Embeddable signup forms with display rules, a second step for interests and double opt-in
+---
+
+Forms collect newsletter signups on your own site. You design them in the dashboard and add one script to every page; the script fetches the active forms and decides when to show them.
+
+## Embedding
+
+```html
+<script>
+  window.PlunkForms = {key: 'pk_...', locale: 'lt', subscribed: false, customer: false};
+</script>
+<script src="https://api.useplunk.com/forms/embed.js" async></script>
+```
+
+- `key`: the project's public key.
+- `locale`: picks the form texts. Falls back to the language, then the first locale of the form.
+- `subscribed` / `customer`: lets the rules hide forms from subscribers and customers. After a signup the script also remembers the visitor in `localStorage`.
+
+Inline and page forms render where you place `<div data-plunk-form="FORM_ID"></div>`. Popups, slide-ins and bars are overlays: at most one is shown per page. `window.PlunkForms.open('FORM_ID')` opens a form from your own button.
+
+## Types
+
+| Type       | Use                                                   |
+| ---------- | ----------------------------------------------------- |
+| `INLINE`   | Footer or in-page block                               |
+| `POPUP`    | Centered dialog. Shown as a slide-in on mobile by default |
+| `SLIDE_IN` | Corner card                                           |
+| `BAR`      | Top or bottom bar                                     |
+| `PAGE`     | Landing page block with a page heading                |
+
+## Display rules
+
+| Rule                 | Meaning                                                                 |
+| -------------------- | ----------------------------------------------------------------------- |
+| `trigger`            | `immediate`, `delay` (`delaySeconds`), `scroll` (`scrollPercent`) or `exit` (desktop; scroll on mobile) |
+| `minPageviews`       | Show from the Nth page view of the session                              |
+| `urlInclude` / `urlExclude` | Path patterns; `*` is a wildcard, otherwise a substring match    |
+| `locales`            | Only for these locales (empty = all)                                    |
+| `hideForSubscribers` | Hide from known subscribers                                             |
+| `hideForCustomers`   | Hide from customers                                                     |
+| `dismissDays`        | Do not show again for N days after closing                              |
+| `mobile`             | `slide_in` (no full-screen popups), `same` or `hide`                    |
+
+## Submissions
+
+The first step asks for the email. With double opt-in (default) a new contact is created with `subscribed: false` and the `newsletter.signup_requested` event is tracked; a workflow on that event sends the confirmation email with `{{subscribeUrl}}`. Without double opt-in the contact is subscribed and `newsletter.subscribed` is tracked. A form never unsubscribes anyone: known subscribers only get a `form.submitted` event.
+
+Every signup event carries `event.form` with the form ID, consent text and version, page URL, IP and time. The contact gets `locale`, `signupFormId`, `signupAt` and `consentVersion`.
+
+The optional second step shows checkbox questions (for example *Which fishing do you do?*). The selected option values are stored on the contact as arrays, e.g. `interests: ["karpine", "feeder"]`, and can be used in segments with **Includes**.
+
+Protection: a honeypot field, a per-IP limit (`FORM_SUBMIT_LIMIT_PER_HOUR`) and optional [Cloudflare Turnstile](/self-hosting/environment-variables#signup-forms).
+
+## Stats
+
+Each form counts views (when it is shown) and submissions; the dashboard shows the conversion rate.

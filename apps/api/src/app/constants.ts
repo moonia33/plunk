@@ -189,3 +189,13 @@ export const PHISHING_DETECTION_ENABLED = OPENROUTER_API_KEY !== '';
 export const PHISHING_CONFIDENCE_THRESHOLD = Number(validateEnv('PHISHING_CONFIDENCE_THRESHOLD', '95')); // Confidence % required to auto-disable project from a single detection
 export const PHISHING_CUMULATIVE_THRESHOLD = Number(validateEnv('PHISHING_CUMULATIVE_THRESHOLD', '3')); // Number of phishing detections before auto-disable (default 3)
 export const PHISHING_CUMULATIVE_WINDOW_MS = Number(validateEnv('PHISHING_CUMULATIVE_WINDOW_MS', '3600000')); // Time window for cumulative tracking in ms (default 1 hour)
+
+// Cloudflare Turnstile for public signup forms. When TURNSTILE_SECRET is set, every form
+// submission must carry a valid token whose hostname is in TURNSTILE_HOSTNAMES.
+export const TURNSTILE_SECRET = validateEnv('TURNSTILE_SECRET', '');
+export const TURNSTILE_SITE_KEY = validateEnv('TURNSTILE_SITE_KEY', '');
+export const TURNSTILE_HOSTNAMES = validateEnv('TURNSTILE_HOSTNAMES', '')
+  .split(',')
+  .map(hostname => hostname.trim().toLowerCase())
+  .filter(Boolean);
+export const FORM_SUBMIT_LIMIT_PER_HOUR = Number(validateEnv('FORM_SUBMIT_LIMIT_PER_HOUR', '10'));

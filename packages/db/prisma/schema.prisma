@@ -85,6 +85,7 @@ model Project {
   domains     Domain[]
   apiRequests ApiRequest[]
   products    Product[]
+  forms       Form[]
 
   idempotencyKeys IdempotencyKey[]
   throttleClaims  ThrottleClaim[]
@@ -141,6 +142,55 @@ model Product {
   @@index([projectId, sku])
   @@index([projectId, parentId])
   @@map("products")
+}
+
+enum FormType {
+  INLINE
+  POPUP
+  SLIDE_IN
+  BAR
+  PAGE
+}
+
+enum FormStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+}
+
+/// Signup form embedded on the shop through /forms/embed.js. Display rules run in the
+/// browser; submissions create or update the contact and track the signup event.
+model Form {
+  id String @id @default(uuid())
+
+  name   String
+  type   FormType   @default(INLINE)
+  status FormStatus @default(DRAFT)
+
+  /// Per-locale texts: { lt: { title, body, button, successTitle, successBody, consentText, ... }, ... }
+  content        Json
+  /// Bumped whenever the consent text changes; stored with each signup
+  consentVersion Int  @default(1)
+  /// Optional second step: [{ key, label: {lt: ...}, options: [{ value, label: {lt: ...} }] }]
+  fields         Json?
+  /// Display rules: trigger, delay, scroll, URL include/exclude, locales, audience, dismissDays
+  rules          Json?
+  /// Visual settings: colors, image, position
+  style          Json?
+
+  doubleOptIn Boolean @default(true)
+
+  views       Int @default(0)
+  submissions Int @default(0)
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, status])
+  @@map("forms")
 }
 
 model Membership {

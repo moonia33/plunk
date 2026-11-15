@@ -10,6 +10,7 @@ export * from './campaign.js';
 export * from './catalog.js';
 export * from './contact.js';
 export * from './email.js';
+export * from './form.js';
 export * from './membership.js';
 export * from './user.js';
 export * from './verification.js';
