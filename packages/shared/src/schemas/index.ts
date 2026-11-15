@@ -866,6 +866,22 @@ export const CatalogSchemas = {
   }),
 } as const;
 
+/** Contact fields a form question must not write: system fields and the ones a signup sets. */
+const FORM_RESERVED_FIELD_KEYS = [
+  'id',
+  'email',
+  'plunk_id',
+  'plunk_email',
+  'unsubscribeUrl',
+  'subscribeUrl',
+  'manageUrl',
+  'locale',
+  'subscribed',
+  'signupFormId',
+  'signupAt',
+  'consentVersion',
+];
+
 const formLocale = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/, 'Use an ISO 639-1 code, e.g. lt or en-GB');
 const formText = (max: number) => z.string().trim().max(max);
 const formLocalized = (max: number) =>
@@ -886,7 +902,10 @@ const formContent = z.object({
 });
 
 const formField = z.object({
-  key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/, 'Letters, digits and _ only, starting with a letter'),
+  key: z
+    .string()
+    .regex(/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/, 'Letters, digits and _ only, starting with a letter')
+    .refine(key => !FORM_RESERVED_FIELD_KEYS.includes(key), 'This contact field is used by Plunk'),
   label: formLocalized(200),
   options: z
     .array(
@@ -934,7 +953,11 @@ const formBody = z.object({
     .record(formLocale, formContent)
     .refine(value => Object.keys(value).length >= 1, 'Add texts for at least one locale')
     .refine(value => Object.keys(value).length <= 20, 'At most 20 locales'),
-  fields: z.array(formField).max(3).default([]),
+  fields: z
+    .array(formField)
+    .max(3)
+    .refine(fields => new Set(fields.map(field => field.key)).size === fields.length, 'Each question needs its own contact field')
+    .default([]),
   rules: formRules.default({}),
   style: formStyle.default({}),
   doubleOptIn: z.boolean().default(true),

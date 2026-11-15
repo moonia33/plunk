@@ -433,7 +433,11 @@ export default function FormEditorPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => update({fields: [...draft.fields, {key: 'interests', label: {}, options: []}]})}
+                  onClick={() =>
+                    update({
+                      fields: [...draft.fields, {key: draft.fields.length ? `interests${draft.fields.length + 1}` : 'interests', label: {}, options: []}],
+                    })
+                  }
                 >
                   <Plus className="h-4 w-4" />
                   Question
