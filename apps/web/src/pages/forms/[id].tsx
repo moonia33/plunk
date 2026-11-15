@@ -435,7 +435,14 @@ export default function FormEditorPage() {
                   variant="outline"
                   onClick={() =>
                     update({
-                      fields: [...draft.fields, {key: draft.fields.length ? `interests${draft.fields.length + 1}` : 'interests', label: {}, options: []}],
+                      fields: [
+                        ...draft.fields,
+                        {
+                          key: draft.fields.length ? `interests${draft.fields.length + 1}` : 'interests',
+                          label: {},
+                          options: [],
+                        },
+                      ],
                     })
                   }
                 >
