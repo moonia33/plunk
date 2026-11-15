@@ -28,6 +28,6 @@ export interface AccountUser {
 
 /**
  * A project the current user belongs to, with their role in it.
- * Returned by GET /users/@me/projects.
+ * Returned by GET /users/@me/projects. Credentials such as the Turnstile secret are never included.
  */
-export type ProjectWithRole = Project & {role: Role};
+export type ProjectWithRole = Omit<Project, 'turnstileSecret'> & {role: Role};

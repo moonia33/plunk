@@ -1,9 +1,12 @@
-import type {Project} from '@plunk/db';
+import type {Project as DbProject} from '@plunk/db';
 import {createContext, type ReactNode, use, useEffect, useState} from 'react';
 import {useSWRConfig} from 'swr';
 
 import {pickActiveProject} from '../activeProject';
 import {useProjects} from '../hooks/useProject';
+
+/** Projects as the API returns them: without credentials such as the Turnstile secret. */
+type Project = Omit<DbProject, 'turnstileSecret'>;
 
 interface ActiveProjectContextValue {
   activeProject: Project | null;
