@@ -18,6 +18,8 @@ Forms collect newsletter signups on your own site. You design them in the dashbo
 - `locale`: picks the form texts. Falls back to the language, then the first locale of the form.
 - `subscribed` / `customer`: lets the rules hide forms from subscribers and customers. After a signup the script also remembers the visitor in `localStorage`.
 
+After a successful first step the script dispatches `plunk:form-submitted` on `document` with `detail: {formId, email}`, so the host page can react, for example by linking earlier anonymous browsing to the new contact. The email in this event is what the visitor typed and is not verified.
+
 Inline and page forms render where you place `<div data-plunk-form="FORM_ID"></div>`. Popups, slide-ins and bars are overlays: at most one is shown per page. `window.PlunkForms.open('FORM_ID')` opens a form from your own button.
 
 ## Types

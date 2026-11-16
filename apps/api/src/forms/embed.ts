@@ -227,6 +227,13 @@ export const EMBED_SCRIPT = String.raw`(function () {
     formEl.appendChild(error);
     card.appendChild(formEl);
 
+    // Lets the host page react to a signup (e.g. a shop linking earlier browsing to the email).
+    function announce(address) {
+      try {
+        document.dispatchEvent(new CustomEvent('plunk:form-submitted', {detail: {formId: form.id, email: address}}));
+      } catch (e) {}
+    }
+
     function done() {
       set('localStorage', 'subscribed', 1);
       formEl.remove();
@@ -307,6 +314,7 @@ export const EMBED_SCRIPT = String.raw`(function () {
         website: honeypot.value || undefined,
         turnstileToken: token || undefined,
       }).then(function (result) {
+        announce(value);
         if (result.step2Token && form.fields.length) step2(result.step2Token);
         else done();
       }).catch(function (err) {
