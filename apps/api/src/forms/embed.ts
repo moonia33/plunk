@@ -314,7 +314,7 @@ export const EMBED_SCRIPT = String.raw`(function () {
         website: honeypot.value || undefined,
         turnstileToken: token || undefined,
       }).then(function (result) {
-        announce(value);
+        if (!honeypot.value) announce(value);
         if (result.step2Token && form.fields.length) step2(result.step2Token);
         else done();
       }).catch(function (err) {
