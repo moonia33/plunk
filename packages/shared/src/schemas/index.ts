@@ -102,6 +102,16 @@ export const ProjectSchemas = {
       .string()
       .regex(/^[a-z]{2}(-[A-Z]{2})?$/)
       .optional(),
+    linkDomain: z.preprocess(
+      value => (value === '' ? null : value),
+      z
+        .string()
+        .trim()
+        .toLowerCase()
+        .regex(/^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z0-9-]+$/, 'Enter a hostname such as news.example.com')
+        .nullable()
+        .optional(),
+    ),
     smartSendingHours: z.number().int().min(0).max(168).optional(),
     weeklyEmailCap: z.number().int().min(0).max(100).optional(),
     quietHoursStart: z.number().int().min(0).max(23).nullable().optional(),

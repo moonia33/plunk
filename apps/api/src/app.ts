@@ -60,6 +60,7 @@ import {
   snoozeSweepQueue,
   formStatsQueue,
 } from './services/QueueService.js';
+import {ProjectLinkService} from './services/ProjectLinkService.js';
 import * as S3Service from './services/S3Service.js';
 import {verifyConfigurationSets} from './services/SESService.js';
 import {requestIdMiddleware} from './middleware/requestId.js';
@@ -136,6 +137,10 @@ const server = new (class extends Server {
 
           if (isAllowedOrigin(origin)) {
             callback(null, true);
+          } else if (req.path.startsWith('/contacts/public/')) {
+            ProjectLinkService.isLinkOrigin(origin)
+              .then(allowed => callback(null, allowed))
+              .catch(() => callback(null, false));
           } else {
             // Log CORS rejection with helpful information
             signale.warn('CORS request rejected', {

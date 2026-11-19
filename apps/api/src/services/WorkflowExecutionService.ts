@@ -16,11 +16,11 @@ import signale from 'signale';
 
 import {prisma} from '../database/prisma.js';
 import {HttpException} from '../exceptions/index.js';
-import {DASHBOARD_URI} from '../app/constants.js';
 
 import {unwrapEventContext} from '../utils/eventContext.js';
 
 import {CatalogService} from './CatalogService.js';
+import {ProjectLinkService} from './ProjectLinkService.js';
 import {ContactFieldService} from './ContactFieldService.js';
 import {EmailService} from './EmailService.js';
 import {NtfyService} from './NtfyService.js';
@@ -681,9 +681,7 @@ export class WorkflowExecutionService {
           [step.template.subject, step.template.body],
           {context: executionContext, locale: contactData.locale},
         ),
-        unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
-        subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
-        manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
+        ...(await ProjectLinkService.links(execution.workflow.projectId, contact.id)),
       };
 
       const renderedSubject = this.renderTemplate(step.template.subject, variables);
@@ -1170,9 +1168,7 @@ export class WorkflowExecutionService {
       ...executionContext,
       data: contactData,
       event: context,
-      unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
-      subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
-      manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
+      ...(await ProjectLinkService.links(execution.workflow.projectId, contact.id)),
     };
 
     const renderedUrl = this.renderTemplate(url, variables);

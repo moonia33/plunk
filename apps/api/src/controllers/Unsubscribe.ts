@@ -4,6 +4,7 @@ import type {NextFunction, Request, Response} from 'express';
 import {DASHBOARD_URI} from '../app/constants.js';
 import {prisma} from '../database/prisma.js';
 import {ContactService} from '../services/ContactService.js';
+import {ProjectLinkService} from '../services/ProjectLinkService.js';
 import {CatchAsync} from '../utils/asyncHandler.js';
 
 /**
@@ -78,7 +79,8 @@ export class Unsubscribe {
    * PUBLIC: a human followed the header link — hand them to the dashboard page.
    */
   @Get(':id')
-  public redirect(req: Request, res: Response, _next: NextFunction) {
+  @CatchAsync
+  public async redirect(req: Request, res: Response, _next: NextFunction) {
     const contactId = req.params.id;
 
     if (!contactId) {
@@ -90,6 +92,9 @@ export class Unsubscribe {
     const sourceEmailId = readSourceEmailId(req);
     const query = sourceEmailId ? `?e=${encodeURIComponent(sourceEmailId)}` : '';
 
-    return res.redirect(302, `${DASHBOARD_URI}/unsubscribe/${encodeURIComponent(contactId)}${query}`);
+    const contact = await prisma.contact.findUnique({where: {id: contactId}, select: {projectId: true}});
+    const base = contact ? await ProjectLinkService.base(contact.projectId) : DASHBOARD_URI;
+
+    return res.redirect(302, `${base}/unsubscribe/${encodeURIComponent(contactId)}${query}`);
   }
 }

@@ -21,6 +21,7 @@ import {buildEmailFieldsUpdate} from '../utils/modelUpdate.js';
 
 import {BillingLimitService} from './BillingLimitService.js';
 import {CatalogService} from './CatalogService.js';
+import {ProjectLinkService} from './ProjectLinkService.js';
 import {DomainService} from './DomainService.js';
 import {buildEmailHeaders, classifyEmail} from './EmailHeaderService.js';
 import {EmailService} from './EmailService.js';
@@ -28,7 +29,7 @@ import {NtfyService} from './NtfyService.js';
 import {QueueService} from './QueueService.js';
 import {SegmentService} from './SegmentService.js';
 import {Keys} from './keys.js';
-import {DASHBOARD_URI, STRIPE_ENABLED} from '../app/constants.js';
+import {STRIPE_ENABLED} from '../app/constants.js';
 import {sendRawEmail} from './SESService.js';
 
 const BATCH_SIZE = 500; // Number of emails to process per batch (increased for better performance)
@@ -676,6 +677,7 @@ export class CampaignService {
     const catalog = await CatalogService.snapshot(campaign.projectId, [campaign.subject, campaign.body]);
 
     // Queue emails for each contact
+    const linkBase = await ProjectLinkService.base(campaign.projectId);
     for (const contact of contacts) {
       try {
         // Render template with contact data
@@ -687,9 +689,9 @@ export class CampaignService {
           ...contactData,
           data: contactData,
           catalog: catalog.forLocale((contactData as Record<string, unknown>).locale),
-          unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
-          subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
-          manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
+          unsubscribeUrl: `${linkBase}/unsubscribe/${contact.id}`,
+          subscribeUrl: `${linkBase}/subscribe/${contact.id}`,
+          manageUrl: `${linkBase}/manage/${contact.id}`,
         };
 
         const renderedSubject = subjectTemplate.render(variables);

@@ -208,6 +208,7 @@ export default function Settings() {
       name: activeProject?.name || '',
       tracking: activeProject?.tracking ?? TrackingMode.ENABLED,
       language: activeProject?.language || 'en',
+      linkDomain: activeProject?.linkDomain ?? null,
       ...sendPolicyOf(activeProject),
     },
   });
@@ -219,6 +220,7 @@ export default function Settings() {
         name: activeProject.name,
         tracking: activeProject.tracking ?? TrackingMode.ENABLED,
         language: activeProject.language || 'en',
+        linkDomain: activeProject.linkDomain ?? null,
         ...sendPolicyOf(activeProject),
       });
     }
@@ -522,6 +524,30 @@ export default function Settings() {
                           </FormItem>
                         )}
                       />
+
+                      <div className="border-t border-neutral-200 pt-6">
+                        <FormField
+                          control={form.control}
+                          name="linkDomain"
+                          render={({field}) => (
+                            <FormItem>
+                              <FormLabel>Link domain</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="news.example.com"
+                                  value={(field.value as string | null | undefined) ?? ''}
+                                  onChange={e => field.onChange(e.target.value)}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Subscribe, unsubscribe and preference links in emails use this hostname. Point it with a
+                                CNAME to the dashboard host. Leave empty for the default.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       {/* Marketing send policy */}
                       <div className="space-y-4 border-t border-neutral-200 pt-6">
