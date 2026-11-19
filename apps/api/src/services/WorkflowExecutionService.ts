@@ -631,11 +631,10 @@ export class WorkflowExecutionService {
     const stepConfig = WorkflowStepConfigSchemas.sendEmail.parse(config);
     const recipientConfig = stepConfig.recipient || {type: 'CONTACT' as const};
 
-    const decision = await SendPolicyService.evaluate(
-      execution.workflow.projectId,
-      execution.contact.id,
-      stepConfig.policy ?? 'skip',
-    );
+    // Transactional templates and notifications to a custom address are not marketing to the contact
+    const policyMode =
+      step.template.type === 'TRANSACTIONAL' || recipientConfig.type === 'CUSTOM' ? 'ignore' : (stepConfig.policy ?? 'skip');
+    const decision = await SendPolicyService.evaluate(execution.workflow.projectId, execution.contact.id, policyMode);
 
     if (decision.action === 'skip') {
       signale.info(`[WORKFLOW] Execution ${execution.id}: email step ${step.id} skipped (${decision.reason})`);
