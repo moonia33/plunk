@@ -81,10 +81,46 @@ export const EMBED_SCRIPT = String.raw`(function () {
     if (rules.hideForCustomers && cfg.customer) return false;
     if (form.type === 'INLINE' || form.type === 'PAGE') return true;
     if (pageviews < rules.minPageviews) return false;
-    var dismissed = Number(get('localStorage', 'dismissed_' + form.id) || 0);
-    if (dismissed && Date.now() - dismissed < rules.dismissDays * DAY) return false;
     if (isMobile && rules.mobile === 'hide') return false;
+    if (recent('dismissed_', form)) return rules.teaser && !recent('teaser_dismissed_', form) ? 'teaser' : false;
     return true;
+  }
+
+  function recent(prefix, form) {
+    var at = Number(get('localStorage', prefix + form.id) || 0);
+    return at > 0 && Date.now() - at < form.rules.dismissDays * DAY;
+  }
+
+  var teaserHost = null;
+  function showTeaser(form) {
+    if (teaserHost || get('localStorage', 'subscribed') || recent('teaser_dismissed_', form)) return;
+    var style = form.style || {};
+    teaserHost = el('div');
+    var root = teaserHost.attachShadow({mode: 'open'});
+    root.appendChild(el('style', null, CSS));
+    var wrap = el('div', 'pf pf-teaser');
+    wrap.style.setProperty('--pf-accent', style.accent || '#1c1c1c');
+    var open = el('button', 'pf-teaser-open', form.content.teaserText || form.content.title);
+    open.type = 'button';
+    open.onclick = function () {
+      hideTeaser();
+      showOverlay(form, true);
+    };
+    var dismiss = el('button', 'pf-teaser-close', '\u00d7');
+    dismiss.type = 'button';
+    dismiss.setAttribute('aria-label', 'Close');
+    dismiss.onclick = function () {
+      set('localStorage', 'teaser_dismissed_' + form.id, Date.now());
+      hideTeaser();
+    };
+    wrap.appendChild(open);
+    wrap.appendChild(dismiss);
+    root.appendChild(wrap);
+    document.body.appendChild(teaserHost);
+  }
+  function hideTeaser() {
+    if (teaserHost) teaserHost.remove();
+    teaserHost = null;
   }
 
   var CSS = [
@@ -125,8 +161,13 @@ export const EMBED_SCRIPT = String.raw`(function () {
     '.pf-bar .pf-row{flex:1 1 360px}.pf-bar .pf-input,.pf-bar .pf-button{height:40px}',
     '.pf-bar .pf-consent{flex-basis:100%;margin:0}',
     '.pf-bar .pf-close{top:50%;transform:translateY(-50%)}',
+    '.pf-teaser{position:fixed;z-index:2147482999;bottom:16px;left:16px;display:flex;align-items:center;max-width:calc(100% - 32px);color:#fff;background:var(--pf-accent);border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.18);animation:pf-rise .3s ease}',
+    '.pf-teaser button{color:inherit;background:transparent;border:0;cursor:pointer;font:inherit}',
+    '.pf-teaser-open{height:44px;padding:0 8px 0 18px;font-size:14px;font-weight:500;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.pf-teaser-close{width:36px;height:44px;font-size:18px;opacity:.7}.pf-teaser-close:hover{opacity:1}',
+    '@media (max-width:640px){.pf-teaser{bottom:12px;left:12px}.pf-teaser-open{height:40px;font-size:13px}.pf-teaser-close{height:40px}}',
     '@keyframes pf-fade{from{opacity:0}}@keyframes pf-rise{from{opacity:0;transform:translateY(12px)}}',
-    '@media (prefers-reduced-motion:reduce){.pf-overlay,.pf-overlay .pf-card,.pf-slide{animation:none}}',
+    '@media (prefers-reduced-motion:reduce){.pf-overlay,.pf-overlay .pf-card,.pf-slide,.pf-teaser{animation:none}}',
   ].join('');
 
   function loadTurnstile() {
@@ -348,10 +389,12 @@ export const EMBED_SCRIPT = String.raw`(function () {
     return form.type === 'PAGE' ? 'page' : 'inline';
   }
 
-  function showOverlay(form) {
-    if (overlayShown) return;
+  function showOverlay(form, again) {
+    if (overlayShown && !again) return;
     overlayShown = true;
-    render(form, document.body, variantFor(form));
+    render(form, document.body, variantFor(form), function () {
+      if (form.rules.teaser) showTeaser(form);
+    });
   }
 
   function arm(form) {
@@ -385,7 +428,9 @@ export const EMBED_SCRIPT = String.raw`(function () {
     forms = config.forms || [];
     turnstile = config.turnstile;
     forms.forEach(function (form) {
-      if (!eligible(form)) return;
+      var state = eligible(form);
+      if (!state) return;
+      if (state === 'teaser') return showTeaser(form);
       if (form.type === 'INLINE' || form.type === 'PAGE') {
         var mounts = document.querySelectorAll('[data-plunk-form="' + form.id + '"]');
         Array.prototype.forEach.call(mounts, function (mount) {

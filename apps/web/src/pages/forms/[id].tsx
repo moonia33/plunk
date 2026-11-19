@@ -44,6 +44,7 @@ const CONTENT_FIELDS: {key: keyof FormContent; label: string; long?: boolean}[] 
   {key: 'button', label: 'Button'},
   {key: 'consentText', label: 'Consent text (stored with every signup)', long: true},
   {key: 'barText', label: 'Bar text (bar forms)'},
+  {key: 'teaserText', label: 'Teaser text (shown after closing)'},
   {key: 'step2Title', label: 'Second step title'},
   {key: 'step2Button', label: 'Second step button'},
   {key: 'successTitle', label: 'Success title'},
@@ -593,6 +594,13 @@ export default function FormEditorPage() {
                   label="Hide from customers"
                   checked={draft.rules.hideForCustomers}
                   onChange={hideForCustomers => rules({hideForCustomers})}
+                />
+                <Toggle
+                  id="teaser"
+                  label="Teaser after closing"
+                  hint="A small tab reopens the form; its close button hides it for the same number of days."
+                  checked={draft.rules.teaser}
+                  onChange={teaser => rules({teaser})}
                 />
               </div>
             </CardContent>
