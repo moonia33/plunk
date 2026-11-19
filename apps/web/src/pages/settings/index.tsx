@@ -98,6 +98,27 @@ const buildTabs = (options: {billingEnabled: boolean; smtpEnabled: boolean}): Ta
   return allTabs.filter(tab => tab.condition !== false);
 };
 
+function sendPolicyOf(
+  project:
+    | {
+        smartSendingHours?: number;
+        weeklyEmailCap?: number;
+        quietHoursStart?: number | null;
+        quietHoursEnd?: number | null;
+        timezone?: string;
+      }
+    | null
+    | undefined,
+) {
+  return {
+    smartSendingHours: project?.smartSendingHours ?? 0,
+    weeklyEmailCap: project?.weeklyEmailCap ?? 0,
+    quietHoursStart: project?.quietHoursStart ?? null,
+    quietHoursEnd: project?.quietHoursEnd ?? null,
+    timezone: project?.timezone || 'Europe/Vilnius',
+  };
+}
+
 export default function Settings() {
   const router = useRouter();
   const {activeProject, setActiveProject, updateActiveProject} = useActiveProject();
@@ -187,6 +208,7 @@ export default function Settings() {
       name: activeProject?.name || '',
       tracking: activeProject?.tracking ?? TrackingMode.ENABLED,
       language: activeProject?.language || 'en',
+      ...sendPolicyOf(activeProject),
     },
   });
 
@@ -197,6 +219,7 @@ export default function Settings() {
         name: activeProject.name,
         tracking: activeProject.tracking ?? TrackingMode.ENABLED,
         language: activeProject.language || 'en',
+        ...sendPolicyOf(activeProject),
       });
     }
   }, [activeProject, form]);
@@ -499,6 +522,109 @@ export default function Settings() {
                           </FormItem>
                         )}
                       />
+
+                      {/* Marketing send policy */}
+                      <div className="space-y-4 border-t border-neutral-200 pt-6">
+                        <div>
+                          <h3 className="text-sm font-medium text-neutral-900">Marketing send policy</h3>
+                          <p className="text-sm text-neutral-500">
+                            Keeps contacts in several workflows from getting too many emails. Transactional emails and
+                            workflow steps set to Ignore policy are never limited.
+                          </p>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <FormField
+                            control={form.control}
+                            name="smartSendingHours"
+                            render={({field}) => (
+                              <FormItem>
+                                <FormLabel>Smart Sending (hours)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={field.value ?? ''}
+                                    onChange={e => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormDescription>A contact gets at most one marketing email in this many hours. 0 turns it off.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="weeklyEmailCap"
+                            render={({field}) => (
+                              <FormItem>
+                                <FormLabel>Weekly limit</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={field.value ?? ''}
+                                    onChange={e => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormDescription>Most marketing emails a contact gets in any 7 days, campaigns included. 0 turns it off.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="quietHoursStart"
+                            render={({field}) => (
+                              <FormItem>
+                                <FormLabel>Quiet hours start</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={field.value ?? ''}
+                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormDescription>Hour (0–23) after which workflow emails wait. Leave empty to turn quiet hours off.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="quietHoursEnd"
+                            render={({field}) => (
+                              <FormItem>
+                                <FormLabel>Quiet hours end</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={field.value ?? ''}
+                                    onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormDescription>Hour (0–23) when waiting emails go out.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="timezone"
+                          render={({field}) => (
+                            <FormItem>
+                              <FormLabel>Time zone</FormLabel>
+                              <FormControl>
+                                <Input value={field.value ?? ''} onChange={field.onChange} placeholder="Europe/Vilnius" />
+                              </FormControl>
+                              <FormDescription>Quiet hours are counted in this time zone.</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       {/* Success/Error Messages */}
                       <AnimatePresence mode="wait">

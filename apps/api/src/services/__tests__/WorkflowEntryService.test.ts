@@ -303,3 +303,69 @@ describe('Workflow entry throttle', () => {
     });
   });
 });
+
+describe('Workflow priority and exit events', () => {
+  const prisma = getPrismaClient();
+  let projectId: string;
+
+  beforeEach(async () => {
+    const {project} = await factories.createUserWithProject();
+    projectId = project.id;
+  });
+
+  async function workflowWith(data: {priority?: number; exitEvents?: string[]}) {
+    const workflow = await factories.createWorkflow({projectId, enabled: true, allowReentry: true});
+    const updated = await prisma.workflow.update({where: {id: workflow.id}, data});
+    const trigger = await prisma.workflowStep.findFirstOrThrow({where: {workflowId: workflow.id, type: 'TRIGGER'}});
+    return {workflow: updated, triggerId: trigger.id};
+  }
+
+  it('a higher-priority entry cancels lower-priority runs of the contact', async () => {
+    const browse = await workflowWith({priority: 10});
+    const cart = await workflowWith({priority: 20});
+    const welcome = await workflowWith({priority: 0});
+    const contact = await factories.createContact({projectId});
+
+    const b = await WorkflowEntryService.enter(browse.workflow, contact.id, browse.triggerId, {});
+    const w = await WorkflowEntryService.enter(welcome.workflow, contact.id, welcome.triggerId, {});
+    const c = await WorkflowEntryService.enter(cart.workflow, contact.id, cart.triggerId, {});
+    expect(b.entered && w.entered && c.entered).toBe(true);
+
+    const runs = await prisma.workflowExecution.findMany({where: {contactId: contact.id}});
+    const byWorkflow = Object.fromEntries(runs.map(r => [r.workflowId, r]));
+    expect(byWorkflow[browse.workflow.id]?.status).toBe(WorkflowExecutionStatus.CANCELLED);
+    expect(byWorkflow[browse.workflow.id]?.exitReason).toContain('Preempted');
+    expect(byWorkflow[welcome.workflow.id]?.status).toBe(WorkflowExecutionStatus.RUNNING);
+    expect(byWorkflow[cart.workflow.id]?.status).toBe(WorkflowExecutionStatus.RUNNING);
+  });
+
+  it('refuses a lower-priority entry while a higher-priority run is active', async () => {
+    const browse = await workflowWith({priority: 10});
+    const cart = await workflowWith({priority: 20});
+    const contact = await factories.createContact({projectId});
+
+    await WorkflowEntryService.enter(cart.workflow, contact.id, cart.triggerId, {});
+    const result = await WorkflowEntryService.enter(browse.workflow, contact.id, browse.triggerId, {});
+    expect(result).toEqual({entered: false, refusal: {reason: 'superseded'}});
+  });
+
+  it('exit events end only the workflows that list them, for that contact', async () => {
+    const cart = await workflowWith({exitEvents: ['order.placed']});
+    const welcome = await workflowWith({});
+    const contact = await factories.createContact({projectId});
+    const other = await factories.createContact({projectId});
+
+    await WorkflowEntryService.enter(cart.workflow, contact.id, cart.triggerId, {});
+    await WorkflowEntryService.enter(cart.workflow, other.id, cart.triggerId, {});
+    await WorkflowEntryService.enter(welcome.workflow, contact.id, welcome.triggerId, {});
+
+    expect(await WorkflowEntryService.exitOnEvent(projectId, 'order.placed', contact.id)).toBe(1);
+
+    const runs = await prisma.workflowExecution.findMany({select: {workflowId: true, contactId: true, status: true}});
+    const status = (workflowId: string, contactId: string) =>
+      runs.find(r => r.workflowId === workflowId && r.contactId === contactId)?.status;
+    expect(status(cart.workflow.id, contact.id)).toBe(WorkflowExecutionStatus.CANCELLED);
+    expect(status(cart.workflow.id, other.id)).toBe(WorkflowExecutionStatus.RUNNING);
+    expect(status(welcome.workflow.id, contact.id)).toBe(WorkflowExecutionStatus.RUNNING);
+  });
+});

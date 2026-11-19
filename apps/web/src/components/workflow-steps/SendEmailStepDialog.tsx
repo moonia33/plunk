@@ -17,6 +17,9 @@ export function SendEmailStepDialog({step, workflowId, open, onOpenChange, onSuc
     recipient?.type === 'CUSTOM' ? 'CUSTOM' : 'CONTACT',
   );
   const [customEmail, setCustomEmail] = useState(recipient?.customEmail ?? '');
+  const [policy, setPolicy] = useState<'skip' | 'delay' | 'ignore'>(
+    config.policy === 'delay' || config.policy === 'ignore' ? config.policy : 'skip',
+  );
 
   const {update, isSubmitting} = useStepUpdate(workflowId, step.id);
 
@@ -44,6 +47,7 @@ export function SendEmailStepDialog({step, workflowId, open, onOpenChange, onSuc
       templateId,
       config: {
         templateId,
+        policy,
         recipient: {
           type: recipientType,
           ...(recipientType === 'CUSTOM' && {customEmail: customEmail.trim()}),
@@ -105,6 +109,33 @@ export function SendEmailStepDialog({step, workflowId, open, onOpenChange, onSuc
               />
             </SelectContent>
           </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="editPolicy">Send policy</Label>
+          <Select value={policy} onValueChange={value => setPolicy(value as 'skip' | 'delay' | 'ignore')}>
+            <SelectTrigger id="editPolicy" className="mt-1.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItemWithDescription
+                value="skip"
+                title="Skip if limited"
+                description="Not sent when Smart Sending or the weekly cap applies (browse, cart)"
+              />
+              <SelectItemWithDescription
+                value="delay"
+                title="Delay until allowed"
+                description="Waits until the limit passes (welcome series)"
+              />
+              <SelectItemWithDescription
+                value="ignore"
+                title="Ignore policy"
+                description="Always sent at once (order, shipping)"
+              />
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-xs text-neutral-500">Quiet hours delay every email except Ignore policy.</p>
         </div>
 
         {recipientType === 'CUSTOM' && (

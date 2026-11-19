@@ -322,6 +322,8 @@ export default function WorkflowEditorPage() {
     name: string;
     description?: string;
     triggerConfig?: {eventName: string};
+    priority?: number;
+    exitEvents?: string[];
   } & EntryRulePayload) => {
     try {
       await network.fetch<Workflow, typeof WorkflowSchemas.update>('PATCH', `/workflows/${id}`, data);
@@ -742,6 +744,8 @@ interface SettingsDialogProps {
     name: string;
     description?: string;
     triggerConfig?: {eventName: string};
+    priority?: number;
+    exitEvents?: string[];
   } & EntryRulePayload) => Promise<void>;
 }
 
@@ -750,6 +754,8 @@ function SettingsDialog({workflow, open, onOpenChange, onSave}: SettingsDialogPr
   const [name, setName] = useState(workflow.name);
   const [description, setDescription] = useState(workflow.description ?? '');
   const [entryRule, setEntryRule] = useState(() => entryRuleOf(workflow));
+  const [priority, setPriority] = useState(String(workflow.priority ?? 0));
+  const [exitEvents, setExitEvents] = useState((workflow.exitEvents ?? []).join(', '));
   const [eventName, setEventName] = useState(triggerConfig?.eventName ?? '');
   const [eventPopoverOpen, setEventPopoverOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -760,6 +766,8 @@ function SettingsDialog({workflow, open, onOpenChange, onSave}: SettingsDialogPr
       setName(workflow.name);
       setDescription(workflow.description ?? '');
       setEntryRule(entryRuleOf(workflow));
+      setPriority(String(workflow.priority ?? 0));
+      setExitEvents((workflow.exitEvents ?? []).join(', '));
       const config = workflow.triggerConfig as {eventName?: string} | null;
       setEventName(config?.eventName ?? '');
     }
@@ -779,6 +787,11 @@ function SettingsDialog({workflow, open, onOpenChange, onSave}: SettingsDialogPr
         name,
         description: description || undefined,
         ...entryRulePayload(entryRule),
+        priority: Math.min(100, Math.max(0, Math.round(Number(priority) || 0))),
+        exitEvents: exitEvents
+          .split(',')
+          .map(e => e.trim())
+          .filter(Boolean),
         triggerConfig: eventName.trim() ? {eventName: eventName.trim()} : undefined,
       });
     } finally {
@@ -865,6 +878,36 @@ function SettingsDialog({workflow, open, onOpenChange, onSave}: SettingsDialogPr
           </div>
 
           <WorkflowEntryRules value={entryRule} onChange={setEntryRule} eventName={eventName} />
+
+          <div>
+            <Label htmlFor="priority">Priority</Label>
+            <Input
+              id="priority"
+              type="number"
+              min={0}
+              max={100}
+              value={priority}
+              onChange={e => setPriority(e.target.value)}
+            />
+            <p className="text-xs text-neutral-500 mt-1">
+              0 = independent. When a contact enters a workflow with a higher priority, their runs of lower-priority
+              workflows stop, and they do not enter lower ones while it runs (e.g. abandoned cart 20 &gt; browse 10).
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="exitEvents">Exit events</Label>
+            <Input
+              id="exitEvents"
+              type="text"
+              value={exitEvents}
+              onChange={e => setExitEvents(e.target.value)}
+              placeholder="order.placed, contact.unsubscribed"
+            />
+            <p className="text-xs text-neutral-500 mt-1">
+              Comma-separated events that end a contact&apos;s run of this workflow.
+            </p>
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
