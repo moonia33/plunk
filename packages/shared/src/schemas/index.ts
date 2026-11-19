@@ -944,6 +944,7 @@ const formContent = z.object({
   step2Title: formText(200).optional(),
   step2Button: formText(60).optional(),
   barText: formText(200).optional(),
+  teaserText: formText(60).optional(),
 });
 
 const formField = z.object({
@@ -974,6 +975,7 @@ const formRules = z.object({
   hideForSubscribers: z.boolean().default(true),
   hideForCustomers: z.boolean().default(false),
   dismissDays: z.number().int().min(0).max(365).default(14),
+  teaser: z.boolean().default(false),
   mobile: z.enum(['same', 'slide_in', 'hide']).default('slide_in'),
 });
 

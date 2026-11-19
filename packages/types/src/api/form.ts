@@ -16,6 +16,7 @@ export interface FormContent {
   step2Title?: string;
   step2Button?: string;
   barText?: string;
+  teaserText?: string;
 }
 
 export interface FormFieldOption {
@@ -40,6 +41,7 @@ export interface FormRules {
   hideForSubscribers: boolean;
   hideForCustomers: boolean;
   dismissDays: number;
+  teaser: boolean;
   mobile: 'same' | 'slide_in' | 'hide';
 }
 
