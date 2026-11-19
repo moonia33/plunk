@@ -87,7 +87,7 @@ model Project {
   quietHoursEnd     Int? // Hour (0-23) quiet hours end, in `timezone`
   timezone          String  @default("Europe/Vilnius")
 
-  linkDomain String? // Hostname (CNAME to the dashboard) for subscribe/unsubscribe/manage links; null uses DASHBOARD_URI
+  linkDomain String? @unique // Hostname (CNAME to the dashboard) for subscribe/unsubscribe/manage links; null uses DASHBOARD_URI
 
   // Relations
   members     Membership[]

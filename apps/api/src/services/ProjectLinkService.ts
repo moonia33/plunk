@@ -3,7 +3,8 @@ import {prisma} from '../database/prisma.js';
 
 const TTL_MS = 60_000;
 const bases = new Map<string, {base: string; at: number}>();
-let origins: {set: Set<string>; at: number} | null = null;
+const MAX_ORIGINS = 1000;
+const origins = new Map<string, {allowed: boolean; at: number}>();
 
 /**
  * Subscribe, unsubscribe and preference links. A project with a `linkDomain` (a CNAME to the dashboard host)
@@ -14,9 +15,13 @@ export class ProjectLinkService {
     const hit = bases.get(projectId);
     if (hit && Date.now() - hit.at < TTL_MS) return hit.base;
     const project = await prisma.project.findUnique({where: {id: projectId}, select: {linkDomain: true}});
-    const base = project?.linkDomain ? `https://${project.linkDomain}` : DASHBOARD_URI;
+    const base = this.baseFor(project?.linkDomain);
     bases.set(projectId, {base, at: Date.now()});
     return base;
+  }
+
+  public static baseFor(linkDomain: string | null | undefined): string {
+    return linkDomain ? `https://${linkDomain}` : DASHBOARD_URI;
   }
 
   public static async links(projectId: string, contactId: string) {
@@ -30,10 +35,20 @@ export class ProjectLinkService {
 
   /** Whether an Origin is one of the projects' link domains, whose pages call the public contact endpoints. */
   public static async isLinkOrigin(origin: string): Promise<boolean> {
-    if (!origins || Date.now() - origins.at >= TTL_MS) {
-      const rows = await prisma.project.findMany({where: {linkDomain: {not: null}}, select: {linkDomain: true}});
-      origins = {set: new Set(rows.map(row => `https://${row.linkDomain}`)), at: Date.now()};
+    const hit = origins.get(origin);
+    if (hit && Date.now() - hit.at < TTL_MS) return hit.allowed;
+    let host: string | null = null;
+    try {
+      const url = new URL(origin);
+      if (url.protocol === 'https:' && url.origin === origin) host = url.hostname;
+    } catch {
+      host = null;
     }
-    return origins.set.has(origin);
+    const allowed = host
+      ? (await prisma.project.findUnique({where: {linkDomain: host}, select: {id: true}})) !== null
+      : false;
+    if (origins.size >= MAX_ORIGINS) origins.clear();
+    origins.set(origin, {allowed, at: Date.now()});
+    return allowed;
   }
 }
