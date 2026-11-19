@@ -658,62 +658,68 @@ export class WorkflowExecutionService {
       return output;
     }
 
-    // Get contact data for variable substitution
-    const contact = execution.contact;
-    const contactData =
-      contact.data && typeof contact.data === 'object' && !Array.isArray(contact.data)
-        ? (contact.data as Record<string, unknown>)
-        : {};
+    try {
+      // Get contact data for variable substitution
+      const contact = execution.contact;
+      const contactData =
+        contact.data && typeof contact.data === 'object' && !Array.isArray(contact.data)
+          ? (contact.data as Record<string, unknown>)
+          : {};
 
-    // Render template with contact data
-    const executionContext = unwrapEventContext(execution.context);
+      // Render template with contact data
+      const executionContext = unwrapEventContext(execution.context);
 
-    const variables = {
-      id: contact.id,
-      email: contact.email,
-      ...contactData,
-      ...executionContext,
-      data: contactData,
-      event: executionContext,
-      catalog: await CatalogService.forRender(
-        execution.workflow.projectId,
-        [step.template.subject, step.template.body],
-        {context: executionContext, locale: contactData.locale},
-      ),
-      unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
-      subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
-      manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
-    };
+      const variables = {
+        id: contact.id,
+        email: contact.email,
+        ...contactData,
+        ...executionContext,
+        data: contactData,
+        event: executionContext,
+        catalog: await CatalogService.forRender(
+          execution.workflow.projectId,
+          [step.template.subject, step.template.body],
+          {context: executionContext, locale: contactData.locale},
+        ),
+        unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
+        subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
+        manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
+      };
 
-    const renderedSubject = this.renderTemplate(step.template.subject, variables);
-    const renderedBody = this.renderTemplate(step.template.body, variables);
+      const renderedSubject = this.renderTemplate(step.template.subject, variables);
+      const renderedBody = this.renderTemplate(step.template.body, variables);
 
-    // Determine recipient email
-    // Schema validation ensures customEmail exists when type is CUSTOM
-    const recipientEmail = recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail! : contact.email;
+      // Determine recipient email
+      // Schema validation ensures customEmail exists when type is CUSTOM
+      const recipientEmail = recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail! : contact.email;
 
-    // Send email via EmailService
-    const email = await EmailService.sendWorkflowEmail({
-      projectId: execution.workflow.projectId,
-      contactId: contact.id, // Keep original contact for tracking
-      workflowExecutionId: execution.id,
-      workflowStepExecutionId: stepExecution.id, // Use stepExecution.id, not step.id
-      templateId: step.template.id,
-      subject: renderedSubject,
-      body: renderedBody,
-      from: step.template.from,
-      fromName: step.template.fromName || undefined,
-      replyTo: step.template.replyTo || undefined,
-      // Pass custom recipient email if specified
-      recipientEmail: recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail : undefined,
-    });
+      // Send email via EmailService
+      const email = await EmailService.sendWorkflowEmail({
+        projectId: execution.workflow.projectId,
+        contactId: contact.id, // Keep original contact for tracking
+        workflowExecutionId: execution.id,
+        workflowStepExecutionId: stepExecution.id, // Use stepExecution.id, not step.id
+        templateId: step.template.id,
+        subject: renderedSubject,
+        body: renderedBody,
+        from: step.template.from,
+        fromName: step.template.fromName || undefined,
+        replyTo: step.template.replyTo || undefined,
+        // Pass custom recipient email if specified
+        recipientEmail: recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail : undefined,
+      });
 
-    return {
-      emailId: email.id,
-      sentAt: email.createdAt,
-      recipientType: recipientConfig.type,
-      recipientEmail,
-    };
+      return {
+        emailId: email.id,
+        sentAt: email.createdAt,
+        recipientType: recipientConfig.type,
+        recipientEmail,
+      };
+    } finally {
+      if (decision.held) {
+        await SendPolicyService.release(execution.workflow.projectId, execution.contact.id);
+      }
+    }
   }
 
   /**
