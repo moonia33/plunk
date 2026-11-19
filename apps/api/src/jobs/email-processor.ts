@@ -17,7 +17,6 @@ import {type Job, Worker} from 'bullmq';
 import signale from 'signale';
 
 import {
-  DASHBOARD_URI,
   EMAIL_RATE_LIMIT_PER_SECOND,
   EMAIL_WORKER_CONCURRENCY,
   EMAIL_WORKER_MAX_CONCURRENCY,
@@ -33,6 +32,7 @@ import {
 } from '../services/EmailHeaderService.js';
 import {EmailService} from '../services/EmailService.js';
 import {EventService} from '../services/EventService.js';
+import {ProjectLinkService} from '../services/ProjectLinkService.js';
 import {MeterService} from '../services/MeterService.js';
 import {emailQueue} from '../services/QueueService.js';
 import {SecurityService} from '../services/SecurityService.js';
@@ -199,6 +199,7 @@ export async function processEmailJob(emailId: string): Promise<void> {
 
     // Format template variables in subject and body
     const contactData = (email.contact.data as Record<string, unknown>) || {};
+    const linkBase = ProjectLinkService.baseFor(email.project.linkDomain);
     const formattedEmail = EmailService.format({
       subject: email.subject,
       body: email.body,
@@ -206,9 +207,9 @@ export async function processEmailJob(emailId: string): Promise<void> {
         email: email.contact.email,
         ...contactData,
         data: contactData,
-        unsubscribeUrl: withSourceEmail(`${DASHBOARD_URI}/unsubscribe/${email.contact.id}`, emailId),
-        subscribeUrl: withSourceEmail(`${DASHBOARD_URI}/subscribe/${email.contact.id}`, emailId),
-        manageUrl: withSourceEmail(`${DASHBOARD_URI}/manage/${email.contact.id}`, emailId),
+        unsubscribeUrl: withSourceEmail(`${linkBase}/unsubscribe/${email.contact.id}`, emailId),
+        subscribeUrl: withSourceEmail(`${linkBase}/subscribe/${email.contact.id}`, emailId),
+        manageUrl: withSourceEmail(`${linkBase}/manage/${email.contact.id}`, emailId),
       },
     });
 

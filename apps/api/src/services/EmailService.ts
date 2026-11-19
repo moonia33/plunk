@@ -3,11 +3,12 @@ import {EmailSourceType, EmailStatus, TrackingMode} from '@plunk/db';
 import {toPrismaJson} from '@plunk/types';
 import signale from 'signale';
 
-import {DASHBOARD_URI, LANDING_URI, STRIPE_ENABLED} from '../app/constants.js';
+import {LANDING_URI, STRIPE_ENABLED} from '../app/constants.js';
 import {prisma} from '../database/prisma.js';
 import {ConflictError, ErrorCode, HttpException, NotFound} from '../exceptions/index.js';
 import {createTranslatorSync, renderTemplate} from '@plunk/shared';
 
+import {ProjectLinkService} from './ProjectLinkService.js';
 import {BillingLimitService} from './BillingLimitService.js';
 import {withSourceEmail} from './EmailHeaderService.js';
 import {QueueService} from './QueueService.js';
@@ -825,7 +826,7 @@ export class EmailService {
                 <hr style="border: none; border-top: 1px solid #eaeaea; width: 100%; margin-top: 12px; margin-bottom: 12px;">
                 <p style="font-size: 12px; line-height: 24px; margin: 16px 0; text-align: center; color: rgb(64, 64, 64);">
                   ${unsubscribeText}
-                  <a href="${withSourceEmail(`${DASHBOARD_URI}/unsubscribe/${contact.id}`, sourceEmailId)}">${updatePreferencesText}</a>.
+                  <a href="${withSourceEmail(`${ProjectLinkService.baseFor(project.linkDomain)}/unsubscribe/${contact.id}`, sourceEmailId)}">${updatePreferencesText}</a>.
                 </p>
               </td>
             </tr>

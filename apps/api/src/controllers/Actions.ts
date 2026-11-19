@@ -12,10 +12,10 @@ import {DomainService} from '../services/DomainService.js';
 import {EmailService} from '../services/EmailService.js';
 import {EmailVerificationService} from '../services/EmailVerificationService.js';
 import {EventService} from '../services/EventService.js';
+import {ProjectLinkService} from '../services/ProjectLinkService.js';
 import {ThrottleService} from '../services/ThrottleService.js';
 import {NotFound, ValidationError} from '../exceptions/index.js';
 import {CatchAsync} from '../utils/asyncHandler.js';
-import {DASHBOARD_URI} from '../app/constants.js';
 
 /**
  * Public API Actions Controller
@@ -337,9 +337,7 @@ export class Actions {
           context: data,
           locale: mergedData.locale,
         }),
-        unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
-        subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
-        manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
+        ...(await ProjectLinkService.links(auth.projectId, contact.id)),
       };
 
       // Render template placeholders against the contact/request data.
