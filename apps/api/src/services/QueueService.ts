@@ -445,13 +445,15 @@ export class QueueService {
     executionId: string,
     stepId: string,
     delay?: number,
+    /** Distinguishes a re-queue of the same step, which the base job id would drop as a duplicate */
+    attempt?: string,
   ): Promise<Job<WorkflowStepJobData>> {
     return workflowQueue.add(
       'process-step',
       {executionId, stepId, type: 'process-step'},
       {
         delay,
-        jobId: `workflow-${executionId}-${stepId}`,
+        jobId: attempt ? `workflow-${executionId}-${stepId}-${attempt}` : `workflow-${executionId}-${stepId}`,
       },
     );
   }

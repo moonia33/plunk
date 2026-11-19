@@ -653,7 +653,7 @@ export class WorkflowExecutionService {
 
       // A cancelled run stays cancelled; the queued retry then does nothing
       if (await this.updateUnlessCancelled(execution.id, {status: WorkflowExecutionStatus.WAITING})) {
-        await QueueService.queueWorkflowStep(execution.id, step.id, delayMs);
+        await QueueService.queueWorkflowStep(execution.id, step.id, delayMs, `deferred-${decision.until.getTime()}`);
       }
 
       return output;
