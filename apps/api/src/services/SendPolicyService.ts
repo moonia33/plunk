@@ -1,4 +1,5 @@
 import {EmailSourceType, EmailStatus} from '@plunk/db';
+import signale from 'signale';
 
 import {prisma} from '../database/prisma.js';
 import {redis} from '../database/redis.js';
@@ -94,7 +95,12 @@ export class SendPolicyService {
 
   /** Release the send lock taken by an `evaluate` that returned `held` */
   public static async release(projectId: string, contactId: string): Promise<void> {
-    await redis.del(this.lockKey(projectId, contactId));
+    try {
+      await redis.del(this.lockKey(projectId, contactId));
+    } catch (error) {
+      // The lock expires on its own; a failed release must not fail the send that already happened
+      signale.warn(`[SEND_POLICY] Could not release send lock for contact ${contactId}:`, error);
+    }
   }
 
   private static lockKey(projectId: string, contactId: string): string {
