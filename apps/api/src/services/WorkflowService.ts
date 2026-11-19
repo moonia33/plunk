@@ -177,6 +177,12 @@ export class WorkflowService {
   /**
    * Create a new workflow
    */
+  /** Trimmed, de-duplicated exit event names; undefined when not given */
+  private static normalizeExitEvents(events: string[] | undefined): string[] | undefined {
+    if (events === undefined) return undefined;
+    return [...new Set(events.map(e => e.trim()).filter(Boolean))];
+  }
+
   public static async create(
     projectId: string,
     data: {
@@ -186,6 +192,8 @@ export class WorkflowService {
       enabled?: boolean;
       allowReentry?: boolean;
       throttle?: WorkflowThrottleOptions | null;
+      priority?: number;
+      exitEvents?: string[];
     },
   ): Promise<Workflow> {
     if (!data.eventName?.trim()) {
@@ -203,6 +211,8 @@ export class WorkflowService {
           triggerType: 'EVENT',
           triggerConfig: {eventName: data.eventName.trim()},
           enabled: data.enabled ?? false,
+          priority: data.priority ?? 0,
+          exitEvents: this.normalizeExitEvents(data.exitEvents) ?? [],
           ...entry,
         },
       });
@@ -252,6 +262,8 @@ export class WorkflowService {
       enabled?: boolean;
       allowReentry?: boolean;
       throttle?: WorkflowThrottleOptions | null;
+      priority?: number;
+      exitEvents?: string[];
     },
   ): Promise<Workflow> {
     // Verify workflow exists and belongs to project
@@ -292,6 +304,9 @@ export class WorkflowService {
       }
       if (data.enabled !== undefined) updateData.enabled = data.enabled;
       if (entry) Object.assign(updateData, entry);
+      if (data.priority !== undefined) updateData.priority = data.priority;
+      const exitEvents = this.normalizeExitEvents(data.exitEvents);
+      if (exitEvents !== undefined) updateData.exitEvents = exitEvents;
 
       const updatedWorkflow = await tx.workflow.update({
         where: {id: workflowId},

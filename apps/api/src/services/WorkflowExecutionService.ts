@@ -25,6 +25,7 @@ import {ContactFieldService} from './ContactFieldService.js';
 import {EmailService} from './EmailService.js';
 import {NtfyService} from './NtfyService.js';
 import {QueueService} from './QueueService.js';
+import {SendPolicyService} from './SendPolicyService.js';
 
 // A step's error is rethrown through the catch of every step before it in the same run, which
 // had completed; the step it came from has handled it, so those pass it up untouched.
@@ -228,6 +229,11 @@ export class WorkflowExecutionService {
       signale.info(`[WORKFLOW] Executing step ${stepId} of type ${step.type}`);
       const result = await this.executeStep(step, execution, stepExecution);
       signale.info(`[WORKFLOW] Step ${stepId} executed successfully`);
+
+      // A SEND_EMAIL step held back by the send policy re-queued itself: nothing follows yet
+      if (result?.deferred === true) {
+        return;
+      }
 
       // Check if step is in a waiting state (WAIT_FOR_EVENT steps only)
       // DELAY steps now mark themselves as COMPLETED and queue the next step
@@ -624,6 +630,34 @@ export class WorkflowExecutionService {
     // Parse and validate step config using schema
     const stepConfig = WorkflowStepConfigSchemas.sendEmail.parse(config);
     const recipientConfig = stepConfig.recipient || {type: 'CONTACT' as const};
+
+    const decision = await SendPolicyService.evaluate(
+      execution.workflow.projectId,
+      execution.contact.id,
+      stepConfig.policy ?? 'skip',
+    );
+
+    if (decision.action === 'skip') {
+      signale.info(`[WORKFLOW] Execution ${execution.id}: email step ${step.id} skipped (${decision.reason})`);
+      return {skipped: true, reason: decision.reason};
+    }
+
+    if (decision.action === 'delay') {
+      const delayMs = Math.max(0, decision.until.getTime() - Date.now());
+      const output = {deferred: true, reason: decision.reason, resumeAt: decision.until.toISOString()};
+
+      await prisma.workflowStepExecution.update({
+        where: {id: stepExecution.id},
+        data: {status: StepExecutionStatus.COMPLETED, completedAt: new Date(), output},
+      });
+
+      // A cancelled run stays cancelled; the queued retry then does nothing
+      if (await this.updateUnlessCancelled(execution.id, {status: WorkflowExecutionStatus.WAITING})) {
+        await QueueService.queueWorkflowStep(execution.id, step.id, delayMs);
+      }
+
+      return output;
+    }
 
     // Get contact data for variable substitution
     const contact = execution.contact;
