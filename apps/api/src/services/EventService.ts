@@ -38,6 +38,11 @@ export class EventService {
       },
     });
 
+    // End runs this event exits first, so a workflow it also triggers still starts
+    if (contactId) {
+      await WorkflowEntryService.exitOnEvent(projectId, eventName, contactId);
+    }
+
     // Trigger workflows that are listening for this event
     await this.triggerWorkflows(projectId, eventName, contactId, data);
 

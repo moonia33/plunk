@@ -102,6 +102,22 @@ export const ProjectSchemas = {
       .string()
       .regex(/^[a-z]{2}(-[A-Z]{2})?$/)
       .optional(),
+    smartSendingHours: z.number().int().min(0).max(168).optional(),
+    weeklyEmailCap: z.number().int().min(0).max(100).optional(),
+    quietHoursStart: z.number().int().min(0).max(23).nullable().optional(),
+    quietHoursEnd: z.number().int().min(0).max(23).nullable().optional(),
+    timezone: z
+      .string()
+      .max(64)
+      .refine(tz => {
+        try {
+          new Intl.DateTimeFormat('en-US', {timeZone: tz});
+          return true;
+        } catch {
+          return false;
+        }
+      }, 'Unknown time zone')
+      .optional(),
   }),
 } as const;
 
@@ -248,6 +264,9 @@ export const TemplateSchemas = {
  * `throttle` on a workflow create or update, as clients send it. The API validates and
  * normalises it with WorkflowThrottleSchemas.throttle.
  */
+const workflowPriority = z.number().int().min(0).max(100).optional();
+const workflowExitEvents = z.array(z.string().trim().min(1).max(100)).max(20).optional();
+
 const workflowThrottleInput = z
   .union([z.string(), z.object({window: z.string().optional(), key: z.string().optional()})])
   .nullable()
@@ -260,6 +279,8 @@ export const WorkflowSchemas = {
     eventName: z.string().min(1),
     allowReentry: z.boolean().optional(),
     throttle: workflowThrottleInput,
+    priority: workflowPriority,
+    exitEvents: workflowExitEvents,
     enabled: z.boolean().default(false),
   }),
   update: z.object({
@@ -270,6 +291,8 @@ export const WorkflowSchemas = {
     enabled: z.boolean().optional(),
     allowReentry: z.boolean().optional(),
     throttle: workflowThrottleInput,
+    priority: workflowPriority,
+    exitEvents: workflowExitEvents,
   }),
   addStep: z.object({
     type: z.nativeEnum(WorkflowStepType),
@@ -321,6 +344,9 @@ export const WorkflowSchemas = {
 export const WorkflowStepConfigSchemas = {
   sendEmail: z.object({
     templateId: uuid,
+    // How the project's send policy applies: skip the email, delay it until allowed, or ignore
+    // the policy (order/shipping style messages). Quiet hours delay unless ignored.
+    policy: z.enum(['skip', 'delay', 'ignore']).optional(),
     recipient: z
       .object({
         type: z.enum(['CONTACT', 'CUSTOM']),

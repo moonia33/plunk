@@ -10,7 +10,7 @@ import {WorkflowExecutionService} from './WorkflowExecutionService.js';
 
 type EntryWorkflow = Pick<
   Workflow,
-  'id' | 'projectId' | 'allowReentry' | 'throttleWindowSeconds' | 'throttleKey'
+  'id' | 'projectId' | 'name' | 'allowReentry' | 'throttleWindowSeconds' | 'throttleKey' | 'priority'
 >;
 
 export type EntryResult = {entered: true; execution: WorkflowExecution} | {entered: false; refusal: WorkflowEntryRefusal};
@@ -46,6 +46,10 @@ export class WorkflowEntryService {
     context: Prisma.JsonValue | Record<string, unknown> | undefined,
   ): Promise<EntryResult> {
     let claimId: string | null = null;
+
+    if (workflow.priority > 0 && (await this.hasHigherPriorityRun(workflow, contactId))) {
+      return {entered: false, refusal: {reason: 'superseded'}};
+    }
 
     if (!workflow.allowReentry) {
       const existing = await prisma.workflowExecution.findFirst({
@@ -91,6 +95,21 @@ export class WorkflowEntryService {
         },
       });
 
+      if (workflow.priority > 0) {
+        // Re-checked after the insert: of two concurrent entries, either this one sees the
+        // higher-priority run here or that run's preemption sees this one
+        // A refused entry leaves nothing behind, so it does not count against re-entry or throttles
+        if (await this.hasHigherPriorityRun(workflow, contactId)) {
+          await prisma.workflowExecution.delete({where: {id: execution.id}});
+          if (claimId) {
+            await ThrottleService.release(claimId);
+          }
+          return {entered: false, refusal: {reason: 'superseded'}};
+        }
+
+        await this.preemptLowerPriorityRuns(workflow, contactId);
+      }
+
       return {entered: true, execution};
     } catch (error) {
       if (claimId) {
@@ -107,11 +126,61 @@ export class WorkflowEntryService {
         return 'Workflow does not allow re-entry and the contact has already entered it';
       case 'in-progress':
         return 'Workflow is already running for this contact';
+      case 'superseded':
+        return 'A higher-priority workflow is already running for this contact';
       case 'throttled':
         return refusal.nextAllowedAt
           ? `Workflow is throttled for this contact until ${refusal.nextAllowedAt.toISOString()}`
           : 'Workflow is throttled for this contact and will not run again for the same key';
     }
+  }
+
+  /**
+   * End the contact's active runs of every workflow listing `eventName` as an exit event
+   * (e.g. order.placed ends the abandoned-cart and browse flows).
+   */
+  public static async exitOnEvent(projectId: string, eventName: string, contactId: string): Promise<number> {
+    const {count} = await prisma.workflowExecution.updateMany({
+      where: {
+        contactId,
+        status: {in: ACTIVE_STATUSES},
+        workflow: {projectId, exitEvents: {has: eventName}},
+      },
+      data: {status: WorkflowExecutionStatus.CANCELLED, completedAt: new Date(), exitReason: `Exit event: ${eventName}`},
+    });
+
+    return count;
+  }
+
+  private static async hasHigherPriorityRun(workflow: EntryWorkflow, contactId: string): Promise<boolean> {
+    const run = await prisma.workflowExecution.findFirst({
+      where: {
+        contactId,
+        status: {in: ACTIVE_STATUSES},
+        workflowId: {not: workflow.id},
+        workflow: {projectId: workflow.projectId, priority: {gt: workflow.priority}},
+      },
+      select: {id: true},
+    });
+
+    return run !== null;
+  }
+
+  /** Cancel the contact's active runs of lower-priority (non-zero) workflows */
+  private static async preemptLowerPriorityRuns(workflow: EntryWorkflow, contactId: string): Promise<void> {
+    await prisma.workflowExecution.updateMany({
+      where: {
+        contactId,
+        status: {in: ACTIVE_STATUSES},
+        workflowId: {not: workflow.id},
+        workflow: {projectId: workflow.projectId, priority: {gt: 0, lt: workflow.priority}},
+      },
+      data: {
+        status: WorkflowExecutionStatus.CANCELLED,
+        completedAt: new Date(),
+        exitReason: `Preempted by workflow "${workflow.name}"`,
+      },
+    });
   }
 
   private static async hasActiveRun(

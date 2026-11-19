@@ -15,6 +15,7 @@ export interface WorkflowThrottle {
 export type WorkflowEntryRefusal =
   | {reason: 'already-entered'}
   | {reason: 'in-progress'}
+  | {reason: 'superseded'}
   | {reason: 'throttled'; nextAllowedAt: Date | null};
 
 /** A workflow's throttle after the request is parsed */

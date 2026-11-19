@@ -25,6 +25,7 @@ import {ContactFieldService} from './ContactFieldService.js';
 import {EmailService} from './EmailService.js';
 import {NtfyService} from './NtfyService.js';
 import {QueueService} from './QueueService.js';
+import {SendPolicyService} from './SendPolicyService.js';
 
 // A step's error is rethrown through the catch of every step before it in the same run, which
 // had completed; the step it came from has handled it, so those pass it up untouched.
@@ -228,6 +229,11 @@ export class WorkflowExecutionService {
       signale.info(`[WORKFLOW] Executing step ${stepId} of type ${step.type}`);
       const result = await this.executeStep(step, execution, stepExecution);
       signale.info(`[WORKFLOW] Step ${stepId} executed successfully`);
+
+      // A SEND_EMAIL step held back by the send policy re-queued itself: nothing follows yet
+      if (result?.deferred === true) {
+        return;
+      }
 
       // Check if step is in a waiting state (WAIT_FOR_EVENT steps only)
       // DELAY steps now mark themselves as COMPLETED and queue the next step
@@ -625,62 +631,95 @@ export class WorkflowExecutionService {
     const stepConfig = WorkflowStepConfigSchemas.sendEmail.parse(config);
     const recipientConfig = stepConfig.recipient || {type: 'CONTACT' as const};
 
-    // Get contact data for variable substitution
-    const contact = execution.contact;
-    const contactData =
-      contact.data && typeof contact.data === 'object' && !Array.isArray(contact.data)
-        ? (contact.data as Record<string, unknown>)
-        : {};
+    // Transactional templates and notifications to a custom address are not marketing to the contact
+    const policyMode =
+      step.template.type === 'TRANSACTIONAL' || recipientConfig.type === 'CUSTOM' ? 'ignore' : (stepConfig.policy ?? 'skip');
+    const decision = await SendPolicyService.evaluate(execution.workflow.projectId, execution.contact.id, policyMode);
 
-    // Render template with contact data
-    const executionContext = unwrapEventContext(execution.context);
+    if (decision.action === 'skip') {
+      signale.info(`[WORKFLOW] Execution ${execution.id}: email step ${step.id} skipped (${decision.reason})`);
+      return {skipped: true, reason: decision.reason};
+    }
 
-    const variables = {
-      id: contact.id,
-      email: contact.email,
-      ...contactData,
-      ...executionContext,
-      data: contactData,
-      event: executionContext,
-      catalog: await CatalogService.forRender(
-        execution.workflow.projectId,
-        [step.template.subject, step.template.body],
-        {context: executionContext, locale: contactData.locale},
-      ),
-      unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
-      subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
-      manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
-    };
+    if (decision.action === 'delay') {
+      const delayMs = Math.max(0, decision.until.getTime() - Date.now());
+      const output = {deferred: true, reason: decision.reason, resumeAt: decision.until.toISOString()};
 
-    const renderedSubject = this.renderTemplate(step.template.subject, variables);
-    const renderedBody = this.renderTemplate(step.template.body, variables);
+      await prisma.workflowStepExecution.update({
+        where: {id: stepExecution.id},
+        data: {status: StepExecutionStatus.COMPLETED, completedAt: new Date(), output},
+      });
 
-    // Determine recipient email
-    // Schema validation ensures customEmail exists when type is CUSTOM
-    const recipientEmail = recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail! : contact.email;
+      // A cancelled run stays cancelled; the queued retry then does nothing
+      if (await this.updateUnlessCancelled(execution.id, {status: WorkflowExecutionStatus.WAITING})) {
+        await QueueService.queueWorkflowStep(execution.id, step.id, delayMs, `deferred-${decision.until.getTime()}`);
+      }
 
-    // Send email via EmailService
-    const email = await EmailService.sendWorkflowEmail({
-      projectId: execution.workflow.projectId,
-      contactId: contact.id, // Keep original contact for tracking
-      workflowExecutionId: execution.id,
-      workflowStepExecutionId: stepExecution.id, // Use stepExecution.id, not step.id
-      templateId: step.template.id,
-      subject: renderedSubject,
-      body: renderedBody,
-      from: step.template.from,
-      fromName: step.template.fromName || undefined,
-      replyTo: step.template.replyTo || undefined,
-      // Pass custom recipient email if specified
-      recipientEmail: recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail : undefined,
-    });
+      return output;
+    }
 
-    return {
-      emailId: email.id,
-      sentAt: email.createdAt,
-      recipientType: recipientConfig.type,
-      recipientEmail,
-    };
+    try {
+      // Get contact data for variable substitution
+      const contact = execution.contact;
+      const contactData =
+        contact.data && typeof contact.data === 'object' && !Array.isArray(contact.data)
+          ? (contact.data as Record<string, unknown>)
+          : {};
+
+      // Render template with contact data
+      const executionContext = unwrapEventContext(execution.context);
+
+      const variables = {
+        id: contact.id,
+        email: contact.email,
+        ...contactData,
+        ...executionContext,
+        data: contactData,
+        event: executionContext,
+        catalog: await CatalogService.forRender(
+          execution.workflow.projectId,
+          [step.template.subject, step.template.body],
+          {context: executionContext, locale: contactData.locale},
+        ),
+        unsubscribeUrl: `${DASHBOARD_URI}/unsubscribe/${contact.id}`,
+        subscribeUrl: `${DASHBOARD_URI}/subscribe/${contact.id}`,
+        manageUrl: `${DASHBOARD_URI}/manage/${contact.id}`,
+      };
+
+      const renderedSubject = this.renderTemplate(step.template.subject, variables);
+      const renderedBody = this.renderTemplate(step.template.body, variables);
+
+      // Determine recipient email
+      // Schema validation ensures customEmail exists when type is CUSTOM
+      const recipientEmail = recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail! : contact.email;
+
+      // Send email via EmailService
+      const email = await EmailService.sendWorkflowEmail({
+        projectId: execution.workflow.projectId,
+        contactId: contact.id, // Keep original contact for tracking
+        workflowExecutionId: execution.id,
+        workflowStepExecutionId: stepExecution.id, // Use stepExecution.id, not step.id
+        templateId: step.template.id,
+        subject: renderedSubject,
+        body: renderedBody,
+        from: step.template.from,
+        fromName: step.template.fromName || undefined,
+        replyTo: step.template.replyTo || undefined,
+        // Pass custom recipient email if specified
+        recipientEmail: recipientConfig.type === 'CUSTOM' ? recipientConfig.customEmail : undefined,
+      });
+
+      return {
+        emailId: email.id,
+        sentAt: email.createdAt,
+        recipientType: recipientConfig.type,
+        recipientEmail,
+      };
+    } finally {
+      if (decision.held) {
+        await SendPolicyService.release(execution.workflow.projectId, execution.contact.id);
+      }
+    }
   }
 
   /**

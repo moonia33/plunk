@@ -130,7 +130,7 @@ export class Workflows {
   @CatchAsync
   public async create(req: Request, res: Response, _next: NextFunction) {
     const auth = res.locals.auth;
-    const {name, description, eventName, enabled, allowReentry} = req.body;
+    const {name, description, eventName, enabled, allowReentry, priority, exitEvents} = req.body;
     const throttle = parseThrottle(req.body);
 
     if (!name) {
@@ -148,6 +148,8 @@ export class Workflows {
       enabled,
       allowReentry,
       throttle,
+      priority,
+      exitEvents,
     });
 
     return res.status(201).json(presentWorkflow(workflow));
@@ -163,7 +165,7 @@ export class Workflows {
   public async update(req: Request, res: Response, _next: NextFunction) {
     const auth = res.locals.auth;
     const workflowId = req.params.id;
-    const {name, description, triggerType, triggerConfig, enabled, allowReentry} = req.body;
+    const {name, description, triggerType, triggerConfig, enabled, allowReentry, priority, exitEvents} = req.body;
     const throttle = parseThrottle(req.body);
 
     if (!workflowId) {
@@ -178,6 +180,8 @@ export class Workflows {
       enabled,
       allowReentry,
       throttle,
+      priority,
+      exitEvents,
     });
 
     return res.status(200).json(presentWorkflow(workflow));
