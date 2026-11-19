@@ -96,6 +96,20 @@ export class WorkflowEntryService {
       });
 
       if (workflow.priority > 0) {
+        // Re-checked after the insert: of two concurrent entries, either this one sees the
+        // higher-priority run here or that run's preemption sees this one
+        if (await this.hasHigherPriorityRun(workflow, contactId)) {
+          await prisma.workflowExecution.update({
+            where: {id: execution.id},
+            data: {
+              status: WorkflowExecutionStatus.CANCELLED,
+              completedAt: new Date(),
+              exitReason: 'Superseded by a higher-priority workflow',
+            },
+          });
+          return {entered: false, refusal: {reason: 'superseded'}};
+        }
+
         await this.preemptLowerPriorityRuns(workflow, contactId);
       }
 
