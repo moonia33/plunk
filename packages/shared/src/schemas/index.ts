@@ -112,6 +112,7 @@ export const ProjectSchemas = {
         .nullable()
         .optional(),
     ),
+    trackSubscribesNew: z.boolean().optional(),
     smartSendingHours: z.number().int().min(0).max(168).optional(),
     weeklyEmailCap: z.number().int().min(0).max(100).optional(),
     quietHoursStart: z.number().int().min(0).max(23).nullable().optional(),

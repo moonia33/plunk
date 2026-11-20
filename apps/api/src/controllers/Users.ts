@@ -254,6 +254,8 @@ export class Users {
       where: {id},
       data,
     });
+    // Settings such as trackSubscribesNew are read through the cached project
+    await redis.del(Keys.Project.id(id), Keys.Project.secret(project.secret), Keys.Project.public(project.public));
 
     return res.status(200).json(project);
   }
