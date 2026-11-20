@@ -88,6 +88,7 @@ model Project {
   timezone          String  @default("Europe/Vilnius")
 
   linkDomain String? @unique // Hostname (CNAME to the dashboard) for subscribe/unsubscribe/manage links; null uses DASHBOARD_URI
+  trackSubscribesNew Boolean @default(true) // Whether /v1/track creates unknown contacts as subscribed; existing contacts are never changed
 
   // Relations
   members     Membership[]

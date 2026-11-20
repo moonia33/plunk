@@ -13,6 +13,7 @@ import {EmailService} from '../services/EmailService.js';
 import {EmailVerificationService} from '../services/EmailVerificationService.js';
 import {EventService} from '../services/EventService.js';
 import {ProjectLinkService} from '../services/ProjectLinkService.js';
+import {ProjectService} from '../services/ProjectService.js';
 import {ThrottleService} from '../services/ThrottleService.js';
 import {NotFound, ValidationError} from '../exceptions/index.js';
 import {CatchAsync} from '../utils/asyncHandler.js';
@@ -79,15 +80,15 @@ export class Actions {
       );
     }
 
-    // Create or update contact with persistent data only
-    // ContactService.upsert will filter out non-persistent fields
-    // Event tracking should subscribe new contacts by default (subscribed=true in ContactService)
-    // but preserve existing subscription state for existing contacts
+    // Existing contacts keep their subscription unless `subscribed` is given. Unknown contacts are
+    // created subscribed only when the project allows it, so behavioural events cannot opt anyone in.
+    const project = await ProjectService.id(auth.projectId);
     const contact = await ContactService.upsert(
       auth.projectId,
       email,
       data as Record<string, unknown> | undefined,
       subscribed,
+      project?.trackSubscribesNew ?? true,
     );
 
     // Track the event with ALL data (persistent + non-persistent)

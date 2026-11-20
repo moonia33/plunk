@@ -29,6 +29,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Switch,
 } from '@plunk/ui';
 import {AnimatePresence, motion} from 'framer-motion';
 import {NextSeo} from 'next-seo';
@@ -209,6 +210,7 @@ export default function Settings() {
       tracking: activeProject?.tracking ?? TrackingMode.ENABLED,
       language: activeProject?.language || 'en',
       linkDomain: activeProject?.linkDomain ?? null,
+      trackSubscribesNew: activeProject?.trackSubscribesNew ?? true,
       ...sendPolicyOf(activeProject),
     },
   });
@@ -221,6 +223,7 @@ export default function Settings() {
         tracking: activeProject.tracking ?? TrackingMode.ENABLED,
         language: activeProject.language || 'en',
         linkDomain: activeProject.linkDomain ?? null,
+        trackSubscribesNew: activeProject.trackSubscribesNew ?? true,
         ...sendPolicyOf(activeProject),
       });
     }
@@ -544,6 +547,24 @@ export default function Settings() {
                                 CNAME to the dashboard host. Leave empty for the default.
                               </FormDescription>
                               <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="trackSubscribesNew"
+                          render={({field}) => (
+                            <FormItem className="mt-4 flex items-center justify-between gap-4">
+                              <div>
+                                <FormLabel>Tracked events subscribe new contacts</FormLabel>
+                                <FormDescription>
+                                  When off, an event for an unknown email creates an unsubscribed contact, so only a
+                                  signup or an explicit subscribed flag opts someone in.
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch checked={field.value ?? true} onCheckedChange={field.onChange} />
+                              </FormControl>
                             </FormItem>
                           )}
                         />

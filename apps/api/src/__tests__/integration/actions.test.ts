@@ -864,6 +864,37 @@ describe('Actions API Integration Tests', () => {
     });
 
     describe('/v1/track endpoint', () => {
+      const track = async (email: string) => {
+        const {Actions} = await import('../../controllers/Actions.js');
+        await new Promise<void>((resolve, reject) => {
+          const res = {
+            locals: {auth: {projectId, type: 'public'}},
+            status() {
+              return res;
+            },
+            json() {
+              resolve();
+              return res;
+            },
+          };
+          new Actions().track(
+            {body: {event: 'page.visited', email}, headers: {}} as never,
+            res as never,
+            ((error?: unknown) => (error ? reject(error) : resolve())) as never,
+          );
+        });
+        return prisma.contact.findFirst({where: {projectId, email}});
+      };
+
+      it('creates unknown contacts as subscribed by default', async () => {
+        expect((await track('track-new-default@example.com'))?.subscribed).toBe(true);
+      });
+
+      it('creates unknown contacts as unsubscribed when the project turns trackSubscribesNew off', async () => {
+        await prisma.project.update({where: {id: projectId}, data: {trackSubscribesNew: false}});
+        expect((await track('track-new-off@example.com'))?.subscribed).toBe(false);
+      });
+
       it('should NOT change subscription status when tracking event for subscribed contact', async () => {
         // Create a subscribed contact
         const contact = await factories.createContact({
